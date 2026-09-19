@@ -1,0 +1,18 @@
+# env
+.env
+.env.local
+.env.*.local
+
+# node
+node_modules/
+dist/
+.next/
+*.log
+
+# app-specific 
+backend/uploads/
+backend/prisma/users.csv
+
+# OS/editor
+.DS_Store
+.vscode/
