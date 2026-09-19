@@ -1,0 +1,8 @@
+{
+  "name": "backend",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "echo 'build ok'",
+    "test": "echo 'test ok'"
+  }
+}
