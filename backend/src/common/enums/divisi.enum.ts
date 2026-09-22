@@ -1,0 +1,11 @@
+export enum Divisi {
+  IT = 'IT',
+  FINANCE = 'FINANCE',
+  TAX = 'TAX',
+  YOUTUBE = 'YOUTUBE',
+  DIGITAL_MARKETING = 'DIGITAL_MARKETING',
+  DESIGN = 'DESIGN',
+  PROJECT = 'PROJECT',
+  LEGAL = 'LEGAL',
+  SO = 'SO',
+}
