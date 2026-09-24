@@ -1,14 +1,46 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/backend"
+  - package-ecosystem: npm
+    directory: /backend
+    target-branch: develop
     schedule:
-      interval: "weekly"
-  - package-ecosystem: "npm"
-    directory: "/frontend"
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Asia/Makassar
+    open-pull-requests-limit: 3
+    groups:
+      backend-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: develop
     schedule:
-      interval: "weekly"
-  - package-ecosystem: "github-actions"
-    directory: "/"
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Asia/Makassar
+    open-pull-requests-limit: 3
+    groups:
+      react:                      
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      frontend-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
     schedule:
-      interval: "weekly"
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
