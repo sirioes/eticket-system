@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  fullName          String    @db.VarChar(191)
+  password          String
+  role              Role
+  divisi            Divisi?
+  isActive          Boolean   @default(true)
+  passwordChangedAt DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tickets         Ticket[]           @relation("TicketCreatedBy")
+  attachments     TicketAttachment[] @relation("AttachmentUploadedBy")
+  rejectedTickets Ticket[]           @relation("TicketRejectedBy")
+
+  @@unique([fullName])
+}
+
+model Ticket {
+  id          String       @id @db.VarChar(191)
+  description String       @db.Text
+  stage       TicketStage  @default(MENUNGGU_MANAGER_ASAL)
+  fromDivisi  Divisi
+  toDivisi    Divisi
+
+  createdById Int
+  createdBy   User @relation("TicketCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  attachments TicketAttachment[]
+
+  rejectedAtStage TicketStage?
+  rejectedById    Int?
+  rejectedBy      User? @relation("TicketRejectedBy", fields: [rejectedById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fromDivisi, createdAt])
+  @@index([toDivisi, createdAt])
+  @@index([stage])
+}
+
+model TicketAttachment {
+  id       String @id @default(uuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  fileName   String
+  storedName String
+  mimeType   String
+  size       Int
+
+  uploadedById Int
+  uploadedBy   User @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+enum Role {
+  SUPERADMIN
+  TEAM_MAIN_OFFICE
+  MANAGER_MAIN_OFFICE
+  FINANCE_MAIN_OFFICE
+  FINANCE_MANAGER_MAIN_OFFICE
+}
+
+enum Divisi {
+  IT
+  FINANCE
+  TAX
+  YOUTUBE
+  DIGITAL_MARKETING
+  DESIGN
+  PROJECT
+  LEGAL
+  SO
+}
+
+enum TicketStage {
+  MENUNGGU_MANAGER_ASAL
+  MENUNGGU_MANAGER_TUJUAN
+  MENUNGGU_STAF_TUJUAN
+  DIPROSES
+  SELESAI
+  DITOLAK
+}
