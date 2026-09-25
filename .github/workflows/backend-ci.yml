@@ -3,21 +3,35 @@ name: backend-ci
 on:
   pull_request:
     branches: [develop, main]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend-ci.yml'
   push:
     branches: [develop, main]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend-ci.yml'
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    name: backend-changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/backend-ci.yml'
+
   backend-test:
     name: backend-test
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -47,3 +61,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false
+
+  backend-passed:
+    name: backend-passed
+    needs: [changes, backend-test, backend-gitleaks]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any required job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - run: echo "backend checks passed"
