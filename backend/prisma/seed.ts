@@ -7,6 +7,7 @@ import 'dotenv/config';
 import { Role } from '../src/common/enums/role.enum';
 import { Divisi } from '../src/common/enums/divisi.enum';
 import { isValidRoleDivisiCombo } from '../src/common/enums/role-divisi-validator';
+import { normalizeFullName } from '../src/common/utils/normalize-full-name';
 import type { ConnectionOptions } from 'tls';
 
 function buildSsl(): ConnectionOptions | undefined {
@@ -27,10 +28,6 @@ function buildAdapter() {
 }
 
 const prisma = new PrismaClient({ adapter: buildAdapter() });
-
-function normalizeFullName(name: string): string {
-  return name.trim().replace(/\s+/g, ' ');
-}
 
 async function main() {
   const csvPath = path.join(__dirname, 'users.csv');
