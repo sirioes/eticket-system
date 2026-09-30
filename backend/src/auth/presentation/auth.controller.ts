@@ -10,6 +10,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { AuthUserResponse, toAuthUserResponse } from './dto/auth-user.response';
 import { LoginDto } from './dto/login.dto';
+import { AnyRole } from './decorators/roles.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -31,6 +32,7 @@ export class AuthController {
     return { user: toAuthUserResponse(user) };
   }
 
+  @AnyRole()
   @Get('me')
   me(@CurrentUser() user: AuthUser): { user: AuthUserResponse } {
     return { user: toAuthUserResponse(user) };
