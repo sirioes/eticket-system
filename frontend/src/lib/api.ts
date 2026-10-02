@@ -1,46 +1,64 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
+const BASE_URL = "/api";
+const FALLBACK_MESSAGE = "Terjadi kesalahan, silakan coba lagi";
+const NETWORK_MESSAGE = "Tidak dapat terhubung ke server";
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
     super(message);
+    this.name = "ApiError";
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-  });
+function extractMessage(body: unknown): string {
+  if (typeof body !== "object" || body === null || !("message" in body)) {
+    return FALLBACK_MESSAGE;
+  }
+  const { message } = body;
+  if (typeof message === "string" && message.trim() !== "") return message;
+  if (Array.isArray(message)) {
+    const first = message.find((item) => typeof item === "string" && item.trim() !== "");
+    if (typeof first === "string") return first;
+  }
+  return FALLBACK_MESSAGE;
+}
 
-  if (res.status === 401) {
-    sessionStorage.clear();
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login?message=sesi+berakhir,+silakan+masuk+lagi';
-    }
-    throw new ApiError(401, 'Unauthorized');
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, { ...init, credentials: "include" });
+  } catch {
+    throw new ApiError(0, NETWORK_MESSAGE);
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.message ?? 'Request failed');
+    const body: unknown = await res.json().catch(() => null);
+    throw new ApiError(res.status, extractMessage(body));
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json();
+  return (await res.json()) as T;
+}
+
+function jsonInit(method: string, data?: unknown): RequestInit {
+  if (data === undefined) return { method };
+  return {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  };
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path, { method: 'GET' }),
-  post: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
-  patch: <T>(path: string, data?: unknown) =>
-    request<T>(path, { method: 'PATCH', body: data ? JSON.stringify(data) : undefined }),
+  get: <T>(path: string) => request<T>(path, { method: "GET" }),
+  post: <T>(path: string, data?: unknown) => request<T>(path, jsonInit("POST", data)),
+  patch: <T>(path: string, data?: unknown) => request<T>(path, jsonInit("PATCH", data)),
   upload: <T>(path: string, formData: FormData) =>
-    fetch(`${BASE_URL}${path}`, { method: 'POST', credentials: 'include', body: formData })
-      .then((res) => { if (!res.ok) throw new ApiError(res.status, 'Upload failed'); return res.json() as Promise<T>; }),
+    request<T>(path, { method: "POST", body: formData }),
 };
 
-export function getBlobUrl(blob: Blob): string {
-  return URL.createObjectURL(blob);
+export function isUnauthorized(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
 }
