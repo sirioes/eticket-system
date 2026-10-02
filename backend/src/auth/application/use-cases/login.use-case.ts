@@ -5,7 +5,7 @@ import { AccessTokenIssuer } from '../ports/access-token-issuer';
 import { PasswordHasher } from '../ports/password-hasher';
 import { UserRepository } from '../ports/user.repository';
 
-export const INVALID_CREDENTIALS_MESSAGE = 'Nama atau password salah';
+export const INVALID_CREDENTIALS_MESSAGE = 'Username atau password salah';
 
 export interface LoginCommand {
   fullName: string;
