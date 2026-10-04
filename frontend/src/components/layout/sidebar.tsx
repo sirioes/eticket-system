@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DIVISI_LABEL } from "@/lib/labels";
+import { LogoutButton } from "@/components/layout/logout-button";
 import type { SessionUser } from "@/types/auth.types";
 
 const NAV_ITEMS = [
@@ -36,8 +37,10 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
 
   useEffect(() => {
     if (!open) return;
-    const closeOnEscape = (event: KeyboardEvent) =>
-      event.key === "Escape" && onClose();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.querySelector("dialog[open]"))
+        onClose();
+    };
     document.addEventListener("keydown", closeOnEscape);
     document.body.style.overflow = "hidden";
     return () => {
@@ -101,6 +104,10 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
             })}
           </ul>
         </nav>
+        
+        <div className="border-t border-mist/15 px-4 pt-4">
+          <LogoutButton />
+        </div>
       </aside>
     </>
   );
