@@ -34,7 +34,7 @@ export function LogoutButton() {
           setFailed(false);
           dialogRef.current?.showModal();
         }}
-        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-mist/80 transition-colors duration-200 hover:bg-mist/10 hover:text-mist"
+        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-mist/80 transition-colors duration-200 hover:bg-mist/10 hover:text-mist lg:rounded-r-none"
       >
         <svg
           aria-hidden="true"
