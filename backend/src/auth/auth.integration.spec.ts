@@ -9,6 +9,7 @@ import { Divisi } from '../common/enums/divisi.enum';
 import { Role } from '../common/enums/role.enum';
 import { UserRepository } from './application/ports/user.repository';
 import { ACCESS_TOKEN_COOKIE, FORBIDDEN_MESSAGE, INVALID_SESSION_MESSAGE } from './auth.constants';
+import { CURRENT_PASSWORD_INCORRECT_MESSAGE } from './application/use-cases/change-password.use-case';
 import { INVALID_CREDENTIALS_MESSAGE } from './application/use-cases/login.use-case';
 import { UserCredentials } from './domain/auth-user';
 import { Roles } from './presentation/decorators/roles.decorator';
@@ -260,6 +261,81 @@ describe('Auth (integration)', () => {
 
       const response = await request(server()).get('/auth/me').set('Cookie', cookie).expect(401);
       expect(response.body.message).toBe(INVALID_SESSION_MESSAGE);
+    });
+  });
+
+  describe('PATCH /auth/password', () => {
+    const NEW_PASSWORD = 'password-baru-456';
+
+    const changePassword = (body: object, cookie?: string) => {
+      const call = request(server()).patch('/auth/password').send(body);
+      return cookie ? call.set('Cookie', cookie) : call;
+    };
+
+    it('rejects a request without a session', async () => {
+      await changePassword({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD }).expect(401);
+    });
+
+    it.each([
+      ['a user id in the body', { currentPassword: PASSWORD, newPassword: NEW_PASSWORD, userId: 2 }],
+      ['a confirmation field', { currentPassword: PASSWORD, newPassword: NEW_PASSWORD, confirmPassword: NEW_PASSWORD }],
+      ['an object instead of a password', { currentPassword: PASSWORD, newPassword: { not: '' } }],
+      ['a missing current password', { newPassword: NEW_PASSWORD }],
+    ])('rejects %s with 400 and keeps the old password', async (_label, body) => {
+      const cookie = await sessionCookieFor('Manager Legal LG01');
+
+      await changePassword(body, cookie).expect(400);
+      await login('Manager Legal LG01').expect(200);
+    });
+
+    it('rejects a wrong current password without ending the session', async () => {
+      const cookie = await sessionCookieFor('Manager Legal LG01');
+
+      const response = await changePassword(
+        { currentPassword: 'salah-total', newPassword: NEW_PASSWORD },
+        cookie,
+      ).expect(400);
+
+      expect(response.body.message).toBe(CURRENT_PASSWORD_INCORRECT_MESSAGE);
+      expect(cookiesOf(response)).toHaveLength(0);
+      await request(server()).get('/auth/me').set('Cookie', cookie).expect(200);
+    });
+
+    it('replaces the session cookie and ends older sessions', async () => {
+      jest.spyOn(Date, 'now').mockReturnValue(Date.now() - 5_000);
+      const oldCookie = await sessionCookieFor('Manager Legal LG01');
+      jest.restoreAllMocks();
+
+      const response = await changePassword(
+        { currentPassword: PASSWORD, newPassword: NEW_PASSWORD },
+        oldCookie,
+      ).expect(204);
+
+      const [newCookie] = cookiesOf(response);
+      expect(newCookie).toMatch(new RegExp(`^${ACCESS_TOKEN_COOKIE}=`));
+      expect(newCookie).toMatch(/HttpOnly/i);
+      expect(newCookie).toMatch(/SameSite=Lax/i);
+
+      await request(server()).get('/auth/me').set('Cookie', oldCookie).expect(401);
+      await request(server()).get('/auth/me').set('Cookie', newCookie.split(';')[0]).expect(200);
+      await login('Manager Legal LG01').expect(401);
+      await login('Manager Legal LG01', NEW_PASSWORD).expect(200);
+      await login('Super Admin SA01').expect(200);
+    });
+
+    it('blocks the sixth attempt within a minute with 429', async () => {
+      const cookie = await sessionCookieFor('Manager Legal LG01');
+      const statuses: number[] = [];
+
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const response = await changePassword(
+          { currentPassword: 'salah-total', newPassword: NEW_PASSWORD },
+          cookie,
+        );
+        statuses.push(response.status);
+      }
+
+      expect(statuses).toEqual([400, 400, 400, 400, 400, 429]);
     });
   });
 

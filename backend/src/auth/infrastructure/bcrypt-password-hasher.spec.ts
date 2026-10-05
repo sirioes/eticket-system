@@ -18,6 +18,21 @@ describe('BcryptPasswordHasher', () => {
     jest.mocked(bcrypt.compare).mockClear();
   });
 
+  it('hashes with the configured cost into a hash that verifies', async () => {
+    const created = await hasher.hash('baru-12345');
+
+    expect(created).toMatch(/^\$2[aby]\$10\$/);
+    await expect(hasher.verify('baru-12345', created)).resolves.toBe(true);
+  });
+
+  it('hashes a password of exactly 72 bytes', async () => {
+    await expect(hasher.hash('😀'.repeat(18))).resolves.toMatch(/^\$2[aby]\$10\$/);
+  });
+
+  it('refuses a password longer than 72 bytes instead of truncating it', async () => {
+    await expect(hasher.hash('a'.repeat(73))).rejects.toThrow(RangeError);
+  });
+
   it('returns true for the correct password', async () => {
     await expect(hasher.verify('rahasia123', hash)).resolves.toBe(true);
   });
