@@ -1,6 +1,7 @@
 const BASE_URL = "/api";
 const FALLBACK_MESSAGE = "Terjadi kesalahan, silakan coba lagi";
 const NETWORK_MESSAGE = "Tidak dapat terhubung ke server";
+const THROTTLED_MESSAGE = "Terlalu banyak percobaan. Tunggu 1 menit, lalu coba lagi.";
 
 export class ApiError extends Error {
   constructor(
@@ -61,4 +62,10 @@ export const api = {
 
 export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401;
+}
+
+export function errorMessage(error: unknown): string {
+  if (!(error instanceof ApiError)) return FALLBACK_MESSAGE;
+  if (error.status === 429) return THROTTLED_MESSAGE;
+  return error.message;
 }
