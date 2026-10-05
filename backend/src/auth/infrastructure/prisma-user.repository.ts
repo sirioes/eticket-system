@@ -34,4 +34,24 @@ export class PrismaUserRepository implements UserRepository {
     });
     return row ? toAuthUser(row) : null;
   }
+
+  async findCredentialsById(id: number): Promise<UserCredentials | null> {
+    const row = await this.prisma.user.findUnique({
+      where: { id },
+      select: { ...AUTH_USER_SELECT, password: true },
+    });
+    return row ? toUserCredentials(row) : null;
+  }
+
+  async updatePassword(
+    id: number,
+    passwordHash: string,
+    passwordChangedAt: Date,
+  ): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: { password: passwordHash, passwordChangedAt },
+      select: { id: true },
+    });
+  }
 }

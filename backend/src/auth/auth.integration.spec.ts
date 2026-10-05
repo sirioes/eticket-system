@@ -55,6 +55,15 @@ class InMemoryUserRepository extends UserRepository {
     return authUser;
   }
 
+  async findCredentialsById(id: number) {
+    return this.users.find((user) => user.id === id) ?? null;
+  }
+
+  async updatePassword(id: number, passwordHash: string, passwordChangedAt: Date) {
+    const index = this.users.findIndex((user) => user.id === id);
+    this.users[index] = { ...this.users[index], passwordHash, passwordChangedAt };
+  }
+
   deactivate(id: number) {
     const index = this.users.findIndex((user) => user.id === id);
     this.users[index] = { ...this.users[index], isActive: false };
