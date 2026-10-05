@@ -15,6 +15,7 @@ import { getJwtSecret } from './infrastructure/jwt-secret';
 import { JwtStrategy } from './infrastructure/jwt.strategy';
 import { PrismaUserRepository } from './infrastructure/prisma-user.repository';
 import { AuthController } from './presentation/auth.controller';
+import { ChangePasswordUseCase } from './application/use-cases/change-password.use-case';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AuthController } from './presentation/auth.controller';
     { provide: UserRepository, useClass: PrismaUserRepository },
     { provide: PasswordHasher, useClass: BcryptPasswordHasher },
     { provide: AccessTokenIssuer, useClass: JwtAccessTokenIssuer },
+    ChangePasswordUseCase,
     LoginUseCase,
     ValidateSessionUseCase,
     JwtStrategy,

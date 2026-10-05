@@ -8,7 +8,9 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError } from "@/lib/api";
+import { INPUT_CLASS } from "@/components/ui/input-class";
+import { PasswordInput } from "@/components/ui/password-input";
+import { errorMessage } from "@/lib/api";
 import { login } from "@/lib/session";
 
 type Status = "idle" | "submitting" | "success";
@@ -21,17 +23,6 @@ const BUTTON_LABEL: Record<Status, string> = {
   success: "Berhasil masuk",
 };
 
-const INPUT_CLASS =
-  "h-12 w-full rounded-xl border border-ink/15 bg-ink/5 px-4 text-base transition-[border-color,background-color,box-shadow] duration-200 ease-smooth outline-none focus:border-teal focus:bg-mist focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-teal)_18%,transparent)] disabled:opacity-60";
-
-function toErrorMessage(error: unknown): string {
-  if (!(error instanceof ApiError))
-    return "Terjadi kesalahan, silakan coba lagi";
-  if (error.status === 429)
-    return "Terlalu banyak percobaan. Tunggu 1 menit, lalu coba lagi.";
-  return error.message;
-}
-
 export function LoginForm({
   expired,
   children,
@@ -43,7 +34,6 @@ export function LoginForm({
   const ticketRef = useRef<HTMLDivElement>(null);
   const fullNameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-  const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -83,7 +73,7 @@ export function LoginForm({
       window.setTimeout(() => router.replace("/"), REDIRECT_DELAY_MS);
     } catch (caught) {
       if (passwordRef.current) passwordRef.current.value = "";
-      fail(toErrorMessage(caught));
+      fail(errorMessage(caught));
     }
   }
 
@@ -127,6 +117,7 @@ export function LoginForm({
           </header>
 
           <form
+            method="post"
             noValidate
             onSubmit={handleSubmit}
             className="flex flex-col gap-5 px-6 pt-5 pb-6 sm:px-8 sm:pb-8"
@@ -167,53 +158,15 @@ export function LoginForm({
               />
             </div>
 
-            <div className="flex animate-fade-up flex-col gap-2 [animation-delay:220ms]">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  ref={passwordRef}
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  maxLength={128}
-                  disabled={busy}
-                  aria-invalid={error !== null}
-                  className={`${INPUT_CLASS} pr-12`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  aria-label="Tampilkan password"
-                  aria-pressed={showPassword}
-                  aria-controls="password"
-                  disabled={busy}
-                  className="absolute inset-y-1.5 right-1.5 grid w-9 place-items-center rounded-lg text-teal transition-colors duration-200 hover:bg-teal/10 disabled:opacity-60"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="size-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
-                    <circle cx="12" cy="12" r="3" />
-                    <path
-                      d="M4 4l16 16"
-                      pathLength={1}
-                      strokeDasharray={1}
-                      strokeDashoffset={showPassword ? 1 : 0}
-                      className="transition-[stroke-dashoffset] duration-300 ease-smooth"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <PasswordInput
+              ref={passwordRef}
+              id="password"
+              label="Password"
+              autoComplete="current-password"
+              disabled={busy}
+              invalid={error !== null}
+              className="animate-fade-up [animation-delay:220ms]"
+            />
 
             <button
               type="submit"

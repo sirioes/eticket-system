@@ -10,6 +10,11 @@ interface SessionResponse {
   user: SessionUser;
 }
 
+interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export async function login(input: LoginInput): Promise<SessionUser> {
   const { user } = await api.post<SessionResponse>("/auth/login", input);
   return user;
@@ -27,4 +32,11 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 
 export function logout(): Promise<void> {
   return api.post<void>("/auth/logout");
+}
+
+export function changePassword(input: ChangePasswordInput): Promise<void> {
+  return api.patch<void>("/auth/password", {
+    currentPassword: input.currentPassword,
+    newPassword: input.newPassword,
+  });
 }
