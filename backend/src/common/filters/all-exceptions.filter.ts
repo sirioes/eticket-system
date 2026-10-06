@@ -1,22 +1,64 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { Response } from 'express';
+
+const INTERNAL_ERROR_MESSAGE = 'Internal server error';
+
+interface ExposedClientError {
+  status: number;
+  message: string;
+}
+
+function asExposedClientError(exception: unknown): ExposedClientError | null {
+  if (typeof exception !== 'object' || exception === null) return null;
+  const { status, expose, message } = exception as Record<string, unknown>;
+  if (
+    typeof status === 'number' &&
+    Number.isInteger(status) &&
+    status >= 400 &&
+    status < 500 &&
+    expose === true &&
+    typeof message === 'string'
+  ) {
+    return { status, message };
+  }
+  return null;
+}
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
+    const response = host.switchToHttp().getResponse<Response>();
 
-    const status = exception instanceof HttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    if (exception instanceof HttpException) {
+      const status = exception.getStatus();
+      const body = exception.getResponse();
+      response
+        .status(status)
+        .json(
+          typeof body === 'string'
+            ? { statusCode: status, message: body }
+            : { statusCode: status, ...body },
+        );
+      return;
+    }
 
-    const message = exception instanceof HttpException
-      ? exception.getResponse()
-      : 'Internal server error';
+    const clientError = asExposedClientError(exception);
+    if (clientError) {
+      response
+        .status(clientError.status)
+        .json({ statusCode: clientError.status, message: clientError.message });
+      return;
+    }
 
-    response.status(status).json(
-      typeof message === 'string' ? { statusCode: status, message } : { statusCode: status, ...message },
-    );
+    response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      message: INTERNAL_ERROR_MESSAGE,
+    });
   }
 }
