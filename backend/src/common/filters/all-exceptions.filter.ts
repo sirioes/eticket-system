@@ -4,6 +4,7 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 
@@ -32,6 +33,8 @@ function asExposedClientError(exception: unknown): ExposedClientError | null {
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const response = host.switchToHttp().getResponse<Response>();
 
@@ -56,6 +59,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return;
     }
 
+    this.logger.error(
+      exception instanceof Error
+        ? (exception.stack ?? exception.message)
+        : String(exception),
+    );
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: INTERNAL_ERROR_MESSAGE,

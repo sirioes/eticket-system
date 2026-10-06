@@ -2,6 +2,7 @@ import {
   ArgumentsHost,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
@@ -16,6 +17,14 @@ function run(exception: unknown) {
 }
 
 describe('AllExceptionsFilter', () => {
+  let logError: jest.SpyInstance;
+
+  beforeEach(() => {
+    logError = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
   it('passes through an HttpException with string response', () => {
     const { status, body } = run(new ForbiddenException('nope'));
     expect(status).toBe(403);
@@ -79,4 +88,19 @@ describe('AllExceptionsFilter', () => {
       });
     },
   );
+
+  it('logs the real error server-side only for unexpected failures', () => {
+    const { body } = run(new Error('connect ECONNREFUSED internal-db-host'));
+
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringContaining('ECONNREFUSED internal-db-host'),
+    );
+    expect(JSON.stringify(body)).not.toContain('internal-db-host');
+  });
+
+  it('does not log expected client errors', () => {
+    run(new ForbiddenException('nope'));
+    run(Object.assign(new Error('too large'), { status: 413, expose: true }));
+    expect(logError).not.toHaveBeenCalled();
+  });
 });
