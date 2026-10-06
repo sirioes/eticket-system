@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { hasLoneSurrogate } from '../../../common/utils/text-safety';
 import { INVALID_SESSION_MESSAGE } from '../../auth.constants';
 import { AccessTokenIssuer } from '../ports/access-token-issuer';
 import { PasswordHasher } from '../ports/password-hasher';
@@ -7,8 +8,6 @@ import { UserRepository } from '../ports/user.repository';
 const MIN_PASSWORD_LENGTH = 8;
 
 const MAX_PASSWORD_BYTES = 72;
-
-const LONE_SURROGATE = /\p{Cs}/u;
 
 export const PASSWORD_TOO_SHORT_MESSAGE = `Password baru minimal ${MIN_PASSWORD_LENGTH} karakter`;
 
@@ -41,7 +40,7 @@ export class ChangePasswordUseCase {
       throw new BadRequestException(PASSWORD_TOO_LONG_MESSAGE);
     }
 
-    if (LONE_SURROGATE.test(newPassword)) {
+    if (hasLoneSurrogate(newPassword)) {
       throw new BadRequestException(PASSWORD_INVALID_CHARACTER_MESSAGE);
     }
 
