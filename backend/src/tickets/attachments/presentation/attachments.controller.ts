@@ -1,18 +1,27 @@
 import {
   BadRequestException,
   Controller,
+  Get,
+  Header,
   Param,
   Post,
+  Res,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import type { AuthUser } from '../../../auth/domain/auth-user';
 import { CurrentUser } from '../../../auth/presentation/decorators/current-user.decorator';
-import { Roles } from '../../../auth/presentation/decorators/roles.decorator';
+import {
+  AnyRole,
+  Roles,
+} from '../../../auth/presentation/decorators/roles.decorator';
 import { Role } from '../../../common/enums/role.enum';
+import { DownloadAttachmentUseCase } from '../application/use-cases/download-attachment.use-case';
 import {
   UploadAttachmentUseCase,
   UploadedAttachment,
@@ -22,13 +31,17 @@ import {
   UPLOAD_FIELD_NAME,
   UPLOAD_THROTTLE,
 } from '../attachments.config';
+import { attachmentDisposition } from './content-disposition';
 import { UploadTargetGuard } from './upload-target.guard';
 
 export const FILE_REQUIRED_MESSAGE = 'File wajib dilampirkan';
 
 @Controller('tickets/:ticketId/attachments')
 export class AttachmentsController {
-  constructor(private readonly uploadAttachment: UploadAttachmentUseCase) {}
+  constructor(
+    private readonly uploadAttachment: UploadAttachmentUseCase,
+    private readonly downloadAttachment: DownloadAttachmentUseCase,
+  ) {}
 
   @Roles(
     Role.TEAM_MAIN_OFFICE,
@@ -55,6 +68,32 @@ export class AttachmentsController {
         originalName: file.originalname,
         size: file.size,
       },
+    });
+  }
+
+  @AnyRole()
+  @Get(':attachmentId')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Header('Content-Security-Policy', "default-src 'none'; sandbox")
+  @Header('Cache-Control', 'private, no-store')
+  async download(
+    @CurrentUser() user: AuthUser,
+    @Param('ticketId') ticketId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const file = await this.downloadAttachment.execute({
+      user,
+      ticketId,
+      attachmentId,
+    });
+
+    response.once('close', () => file.stream.destroy());
+
+    return new StreamableFile(file.stream, {
+      type: file.mimeType,
+      length: file.size,
+      disposition: attachmentDisposition(file.fileName),
     });
   }
 }

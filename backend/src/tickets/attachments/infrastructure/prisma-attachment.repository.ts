@@ -3,6 +3,7 @@ import { Prisma, TicketStage } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import {
   AttachmentRepository,
+  DownloadableAttachment,
   LockedTicket,
   UploadContentionError,
   UploadTarget,
@@ -31,6 +32,28 @@ export class PrismaAttachmentRepository implements AttachmentRepository {
     });
     if (ticket === null) return null;
     return { stage: ticket.stage, attachmentCount: ticket._count.attachments };
+  }
+
+  async findForDownload(
+    ticketId: string,
+    attachmentId: string,
+  ): Promise<DownloadableAttachment | null> {
+    return this.prisma.ticketAttachment.findFirst({
+      where: { id: attachmentId, ticketId },
+      select: {
+        fileName: true,
+        storedName: true,
+        mimeType: true,
+        ticket: {
+          select: {
+            fromDivisi: true,
+            toDivisi: true,
+            stage: true,
+            rejectedAtStage: true,
+          },
+        },
+      },
+    });
   }
 
   async withLockedTicket<T extends object>(

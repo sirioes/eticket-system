@@ -1,4 +1,5 @@
 import { TicketStage } from '../../../../generated/prisma/client';
+import { VisibleTicket } from '../../../domain/ticket-visibility';
 import { AllowedMimeType } from '../../domain/attachment-rules';
 
 export interface NewAttachment {
@@ -27,6 +28,13 @@ export interface LockedTicket {
   insert(attachment: NewAttachment): Promise<StoredAttachment>;
 }
 
+export interface DownloadableAttachment {
+  readonly fileName: string;
+  readonly storedName: string;
+  readonly mimeType: string;
+  readonly ticket: VisibleTicket;
+}
+
 export class UploadContentionError extends Error {
   constructor() {
     super('Menunggu kunci pengaduan terlalu lama');
@@ -39,6 +47,11 @@ export abstract class AttachmentRepository {
     ticketId: string,
     uploaderId: number,
   ): Promise<UploadTarget | null>;
+
+  abstract findForDownload(
+    ticketId: string,
+    attachmentId: string,
+  ): Promise<DownloadableAttachment | null>;
 
   abstract withLockedTicket<T extends object>(
     ticketId: string,

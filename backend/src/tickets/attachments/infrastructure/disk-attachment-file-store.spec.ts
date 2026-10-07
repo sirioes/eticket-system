@@ -75,6 +75,23 @@ describe('DiskAttachmentFileStore', () => {
     });
   });
 
+  describe('open', () => {
+    it('streams the stored bytes and reports the size', async () => {
+      await writeFile(path.join(directory, NAME), PDF);
+
+      const file = await store.open(NAME);
+
+      expect(file?.size).toBe(PDF.length);
+      const chunks: Buffer[] = [];
+      for await (const chunk of file!.stream) chunks.push(chunk as Buffer);
+      expect(Buffer.concat(chunks).equals(PDF)).toBe(true);
+    });
+
+    it('returns null when the file does not exist', async () => {
+      await expect(store.open(NAME)).resolves.toBeNull();
+    });
+  });
+
   describe('remove', () => {
     it('deletes the file', async () => {
       await writeFile(path.join(directory, NAME), PNG);
@@ -133,6 +150,9 @@ describe('DiskAttachmentFileStore', () => {
       '',
     ])('refuses the stored name %p', async (name) => {
       await expect(store.detectMimeType(name)).rejects.toThrow(
+        'Nama file tersimpan tidak valid',
+      );
+      await expect(store.open(name)).rejects.toThrow(
         'Nama file tersimpan tidak valid',
       );
       await expect(store.remove(name)).rejects.toThrow(

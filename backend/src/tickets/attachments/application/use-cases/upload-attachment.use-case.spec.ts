@@ -64,6 +64,10 @@ class FakeAttachmentRepository extends AttachmentRepository {
     };
   }
 
+  async findForDownload() {
+    return null;
+  }
+
   async withLockedTicket<T extends object>(
     _ticketId: string,
     uploaderId: number,
@@ -99,6 +103,10 @@ class FakeFileStore extends AttachmentFileStore {
 
   async detectMimeType() {
     return this.detected;
+  }
+
+  async open() {
+    return null;
   }
 
   async remove(storedName: string) {

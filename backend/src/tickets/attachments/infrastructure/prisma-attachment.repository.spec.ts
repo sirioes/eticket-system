@@ -12,6 +12,7 @@ function build() {
   };
   const prisma = {
     ticket: { findFirst: jest.fn() },
+    ticketAttachment: { findFirst: jest.fn() },
     $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
       callback(tx),
     ),
@@ -55,6 +56,53 @@ describe('PrismaAttachmentRepository', () => {
       prisma.ticket.findFirst.mockResolvedValue(null);
 
       await expect(repository.findUploadTarget('IT-9', 3)).resolves.toBeNull();
+    });
+  });
+
+  describe('findForDownload', () => {
+    it('looks the attachment up only inside the route ticket', async () => {
+      const { repository, prisma } = build();
+      const row = {
+        fileName: 'laporan.pdf',
+        storedName: '3f2b8c1e-5a47-4d9b-8e60-1c2d3e4f5a6b',
+        mimeType: 'application/pdf',
+        ticket: {
+          fromDivisi: 'IT',
+          toDivisi: 'TAX',
+          stage: 'DIPROSES',
+          rejectedAtStage: null,
+        },
+      };
+      prisma.ticketAttachment.findFirst.mockResolvedValue(row);
+
+      await expect(
+        repository.findForDownload('IT-1', 'att-1'),
+      ).resolves.toEqual(row);
+      expect(prisma.ticketAttachment.findFirst).toHaveBeenCalledWith({
+        where: { id: 'att-1', ticketId: 'IT-1' },
+        select: {
+          fileName: true,
+          storedName: true,
+          mimeType: true,
+          ticket: {
+            select: {
+              fromDivisi: true,
+              toDivisi: true,
+              stage: true,
+              rejectedAtStage: true,
+            },
+          },
+        },
+      });
+    });
+
+    it('returns null when there is no such attachment on that ticket', async () => {
+      const { repository, prisma } = build();
+      prisma.ticketAttachment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        repository.findForDownload('IT-1', 'att-9'),
+      ).resolves.toBeNull();
     });
   });
 

@@ -2,6 +2,9 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
+import type { Readable } from 'node:stream';
 import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,12 +34,14 @@ import {
 } from '../application/ports/ticket.repository';
 import {
   AttachmentRepository,
+  DownloadableAttachment,
   LockedTicket,
   NewAttachment,
   UploadContentionError,
   UploadTarget,
 } from './application/ports/attachment.repository';
 import { DiskAttachmentFileStore } from './infrastructure/disk-attachment-file-store';
+import { ATTACHMENT_NOT_FOUND_MESSAGE } from './application/use-cases/download-attachment.use-case';
 import {
   ATTACHMENT_LIMIT_MESSAGE,
   STAGE_LOCKED_MESSAGE,
@@ -112,6 +117,7 @@ class InMemoryTicketRepository extends TicketRepository {
 class InMemoryAttachmentRepository extends AttachmentRepository {
   readonly saved: (NewAttachment & { ticketId: string })[] = [];
   readonly stages = new Map<string, TicketStage>();
+  readonly rejectedAt = new Map<string, TicketStage>();
   private readonly chains = new Map<string, Promise<unknown>>();
 
   constructor(private readonly tickets: InMemoryTicketRepository) {
@@ -135,6 +141,29 @@ class InMemoryAttachmentRepository extends AttachmentRepository {
     return {
       stage: this.stageOf(ticketId),
       attachmentCount: this.saved.filter((a) => a.ticketId === ticketId).length,
+    };
+  }
+
+  async findForDownload(
+    ticketId: string,
+    attachmentId: string,
+  ): Promise<DownloadableAttachment | null> {
+    const index = this.saved.findIndex(
+      (a, i) => a.ticketId === ticketId && `att-${i + 1}` === attachmentId,
+    );
+    const ticket = this.tickets.stored.find((t) => t.id === ticketId);
+    if (index === -1 || !ticket) return null;
+    const attachment = this.saved[index];
+    return {
+      fileName: attachment.fileName,
+      storedName: attachment.storedName,
+      mimeType: attachment.mimeType,
+      ticket: {
+        fromDivisi: ticket.fromDivisi,
+        toDivisi: ticket.toDivisi,
+        stage: this.stageOf(ticketId),
+        rejectedAtStage: this.rejectedAt.get(ticketId) ?? null,
+      },
     };
   }
 
@@ -246,6 +275,9 @@ describe('Attachments (integration)', () => {
       account(3, 'Manager Legal LG01', Role.MANAGER_MAIN_OFFICE, Divisi.LEGAL),
       account(4, 'Staf Finance FN01', Role.FINANCE_MAIN_OFFICE, Divisi.FINANCE),
       account(5, 'Super Admin SA01', Role.SUPERADMIN, null),
+      account(6, 'Manager IT IT03', Role.MANAGER_MAIN_OFFICE, Divisi.IT),
+      account(7, 'Staf Tax TX01', Role.TEAM_MAIN_OFFICE, Divisi.TAX),
+      account(8, 'Manager Tax TX02', Role.MANAGER_MAIN_OFFICE, Divisi.TAX),
     ]);
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -263,8 +295,248 @@ describe('Attachments (integration)', () => {
   });
 
   afterEach(async () => {
+    jest.restoreAllMocks();
     await app.close();
     await rm(uploadRoot, { recursive: true, force: true });
+  });
+
+  describe('GET /tickets/:ticketId/attachments/:attachmentId', () => {
+    const attachmentUrl = (ticketId: string, attachmentId: string) =>
+      `/tickets/${encodeURIComponent(ticketId)}/attachments/${encodeURIComponent(attachmentId)}`;
+
+    const ticketWithAttachment = async (
+      content: Buffer = PDF,
+      filename = 'laporan.pdf',
+      contentType = 'application/pdf',
+    ) => {
+      const ticketId = await createTicketAs('Staf IT IT01', Divisi.TAX);
+      const uploaded = await upload(
+        await loginCookie('Staf IT IT01'),
+        ticketId,
+        content,
+        { filename, contentType },
+      );
+      expect(uploaded.status).toBe(201);
+      return { ticketId, attachmentId: uploaded.body.id as string };
+    };
+
+    const download = async (
+      name: string,
+      ticketId: string,
+      attachmentId: string,
+    ) =>
+      request(server())
+        .get(attachmentUrl(ticketId, attachmentId))
+        .set('Cookie', await loginCookie(name))
+        .buffer(true)
+        .parse((res, done) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (chunk: Buffer) => chunks.push(chunk));
+          res.on('end', () => done(null, Buffer.concat(chunks)));
+        });
+
+    it('requires a session', async () => {
+      const { ticketId, attachmentId } = await ticketWithAttachment();
+
+      const response = await request(server()).get(
+        attachmentUrl(ticketId, attachmentId),
+      );
+
+      expect(response.status).toBe(401);
+    });
+
+    it('returns the exact bytes to the creator', async () => {
+      const { ticketId, attachmentId } = await ticketWithAttachment();
+
+      const response = await download('Staf IT IT01', ticketId, attachmentId);
+
+      expect(response.status).toBe(200);
+      expect(Buffer.compare(response.body as Buffer, PDF)).toBe(0);
+      expect(response.headers['content-length']).toBe(String(PDF.length));
+    });
+
+    it('sends headers that force a download and block content sniffing', async () => {
+      const { ticketId, attachmentId } = await ticketWithAttachment(
+        PNG,
+        'bukti é.png',
+        'image/png',
+      );
+
+      const response = await download('Staf IT IT01', ticketId, attachmentId);
+
+      expect(response.headers['content-type']).toBe('image/png');
+      expect(response.headers['content-disposition']).toBe(
+        `attachment; filename="bukti _.png"; filename*=UTF-8''bukti%20%C3%A9.png`,
+      );
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['content-security-policy']).toBe(
+        "default-src 'none'; sandbox",
+      );
+      expect(response.headers['cache-control']).toBe('private, no-store');
+    });
+
+    it('uses the detected type, never what the browser claimed', async () => {
+      const { ticketId, attachmentId } = await ticketWithAttachment(
+        PDF,
+        'laporan.pdf',
+        'text/html',
+      );
+
+      const response = await download('Staf IT IT01', ticketId, attachmentId);
+
+      expect(response.headers['content-type']).toBe('application/pdf');
+    });
+
+    it.each([
+      ['a colleague in the origin divisi', 'Staf IT IT02'],
+      ['the origin manager', 'Manager IT IT03'],
+      ['the superadmin', 'Super Admin SA01'],
+    ])('lets %s download', async (_label, name) => {
+      const { ticketId, attachmentId } = await ticketWithAttachment();
+
+      const response = await download(name, ticketId, attachmentId);
+
+      expect(response.status).toBe(200);
+    });
+
+    it.each([
+      ['an unrelated divisi', 'Manager Legal LG01'],
+      ['the destination manager before approval', 'Manager Tax TX02'],
+      ['destination staff before approval', 'Staf Tax TX01'],
+    ])('answers 404 for %s', async (_label, name) => {
+      const { ticketId, attachmentId } = await ticketWithAttachment();
+
+      const response = await download(name, ticketId, attachmentId);
+
+      expect(response.status).toBe(404);
+      expect(JSON.parse(response.body.toString()).message).toBe(
+        ATTACHMENT_NOT_FOUND_MESSAGE,
+      );
+    });
+
+    it('follows the ticket stage for the destination divisi', async () => {
+      const { ticketId, attachmentId } = await ticketWithAttachment();
+      const url = attachmentUrl(ticketId, attachmentId);
+      const staff = await loginCookie('Staf Tax TX01');
+      const manager = await loginCookie('Manager Tax TX02');
+      const statusFor = async (cookie: string) =>
+        (await request(server()).get(url).set('Cookie', cookie)).status;
+
+      attachments.stages.set(ticketId, 'MENUNGGU_MANAGER_TUJUAN');
+      expect(await statusFor(staff)).toBe(404);
+      expect(await statusFor(manager)).toBe(200);
+
+      attachments.stages.set(ticketId, 'MENUNGGU_STAF_TUJUAN');
+      expect(await statusFor(staff)).toBe(200);
+
+      attachments.stages.set(ticketId, 'DITOLAK');
+      attachments.rejectedAt.set(ticketId, 'MENUNGGU_MANAGER_ASAL');
+      expect(await statusFor(manager)).toBe(404);
+    });
+
+    it('does not reveal an attachment through another ticket route', async () => {
+      const first = await ticketWithAttachment();
+      const otherTicket = await createTicketAs('Staf IT IT01', Divisi.TAX);
+
+      const response = await download(
+        'Staf IT IT01',
+        otherTicket,
+        first.attachmentId,
+      );
+
+      expect(response.status).toBe(404);
+    });
+
+    it.each(['att-999', '../../etc/passwd', "x' OR '1'='1", '%00'])(
+      'answers 404 for the attachment id %p',
+      async (attachmentId) => {
+        const { ticketId } = await ticketWithAttachment();
+
+        const response = await download('Staf IT IT01', ticketId, attachmentId);
+
+        expect(response.status).toBe(404);
+      },
+    );
+
+    it('answers 404 and keeps serving others when the file vanished from disk', async () => {
+      const { ticketId, attachmentId } = await ticketWithAttachment();
+      await Promise.all(
+        (await filesOnDisk()).map((name) => rm(path.join(uploadDir, name))),
+      );
+
+      const response = await download('Staf IT IT01', ticketId, attachmentId);
+
+      expect(response.status).toBe(404);
+      expect(JSON.parse(response.body.toString()).message).toBe(
+        ATTACHMENT_NOT_FOUND_MESSAGE,
+      );
+    });
+
+    it('is not downloadable inline by a cross-site navigation', async () => {
+      const { ticketId, attachmentId } = await ticketWithAttachment();
+
+      const response = await request(server())
+        .get(attachmentUrl(ticketId, attachmentId))
+        .set('Cookie', await loginCookie('Staf IT IT01'))
+        .set('Sec-Fetch-Site', 'cross-site');
+
+      expect(response.headers['content-disposition']).toMatch(/^attachment;/);
+    });
+
+    it('releases the file when the client aborts mid-download', async () => {
+      const { ticketId, attachmentId } = await ticketWithAttachment(
+        padded(PDF, MAX_ATTACHMENT_BYTES),
+      );
+      const cookie = await loginCookie('Staf IT IT01');
+      const opened: Readable[] = [];
+      const original = DiskAttachmentFileStore.prototype.open;
+      jest
+        .spyOn(DiskAttachmentFileStore.prototype, 'open')
+        .mockImplementation(async function (
+          this: DiskAttachmentFileStore,
+          name,
+        ) {
+          const file = await original.call(this, name);
+          if (file) opened.push(file.stream);
+          return file;
+        });
+      await app.listen(0, '127.0.0.1');
+      const { port } = app.getHttpServer().address() as AddressInfo;
+
+      await new Promise<void>((resolve, reject) => {
+        const req = http.get(
+          {
+            host: '127.0.0.1',
+            port,
+            path: attachmentUrl(ticketId, attachmentId),
+            headers: { Cookie: cookie },
+          },
+          (res) => {
+            res.once('data', () => {
+              req.destroy();
+              resolve();
+            });
+          },
+        );
+        req.on('error', () => undefined);
+        setTimeout(() => reject(new Error('no data received')), 5000);
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(opened).toHaveLength(1);
+      expect(opened[0].destroyed).toBe(true);
+    });
+
+    it('has no static route that serves the upload folder', async () => {
+      await ticketWithAttachment();
+      const [stored] = await filesOnDisk();
+      const cookie = await loginCookie('Staf IT IT01');
+
+      for (const url of [`/uploads/${stored}`, `/${stored}`]) {
+        const response = await request(server()).get(url).set('Cookie', cookie);
+        expect(response.status).toBe(404);
+      }
+    });
   });
 
   describe('POST /tickets/:ticketId/attachments', () => {
