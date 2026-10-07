@@ -12,6 +12,7 @@ dist/
 # app-specific 
 backend/uploads/
 backend/prisma/users.csv
+uploads/
 
 # OS/editor
 .DS_Store

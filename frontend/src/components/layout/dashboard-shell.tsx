@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/session";
 import type { SessionUser } from "@/types/auth.types";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { UserContext } from "@/components/layout/user-context";
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -64,7 +65,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <Sidebar user={user} open={menuOpen} onClose={closeMenu} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar menuOpen={menuOpen} onMenu={() => setMenuOpen(true)} />
-        <main className="flex-1 px-4 pb-10 sm:px-6 lg:px-10">{children}</main>
+        <main className="flex-1 px-4 pb-10 sm:px-6 lg:px-10">
+          <UserContext value={user}>{children}</UserContext>
+        </main>
       </div>
     </div>
   );

@@ -21,6 +21,12 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+const CREATE_TICKET_ITEM: NavItem = {
+  href: "/buat-pengaduan",
+  label: "Buat Pengaduan",
+  icon: "M6 3h9l4 4v14H6zM15 3v4h4M12 11v6M9 14h6",
+};
+
 const PASSWORD_ITEM: NavItem = {
   href: "/ganti-password",
   label: "Ganti Password",
@@ -78,6 +84,8 @@ interface SidebarProps {
 
 export function Sidebar({ user, open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const navItems =
+    user.role === "SUPERADMIN" ? NAV_ITEMS : [...NAV_ITEMS, CREATE_TICKET_ITEM];
 
   useEffect(() => {
     if (!open) return;
@@ -116,7 +124,7 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
 
         <nav aria-label="Menu utama" className="mt-10 flex-1 px-4 lg:pr-0">
           <ul className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item, index) => (
+            {navItems.map((item, index) => (
               <li
                 key={item.href}
                 style={{ animationDelay: `${120 + index * 50}ms` }}
