@@ -1,9 +1,14 @@
 import { TicketStage } from '../../generated/prisma/client';
-import { Divisi } from '../../common/enums/divisi.enum';
+import type { AuthUser } from '../../auth/domain/auth-user';
+import { isManagerRole, Role } from '../../common/enums/role.enum';
+import type { VisibleTicket } from './ticket-visibility';
 
 export type StageAction = 'TERIMA' | 'TOLAK' | 'PROSES' | 'SELESAI';
 
-export const STAGE_TRANSITIONS: Record<TicketStage, Partial<Record<StageAction, TicketStage>>> = {
+export const STAGE_TRANSITIONS: Record<
+  TicketStage,
+  Partial<Record<StageAction, TicketStage>>
+> = {
   MENUNGGU_MANAGER_ASAL: {
     TERIMA: 'MENUNGGU_MANAGER_TUJUAN',
     TOLAK: 'DITOLAK',
@@ -22,22 +27,33 @@ export const STAGE_TRANSITIONS: Record<TicketStage, Partial<Record<StageAction, 
   DITOLAK: {},
 };
 
-export function toDisplayStatus(
+export type ActableTicket = Pick<
+  VisibleTicket,
+  'fromDivisi' | 'toDivisi' | 'stage'
+>;
+
+export function resolveNextStage(
   stage: TicketStage,
-  ticket: { fromDivisi: Divisi; toDivisi: Divisi },
-): string {
-  switch (stage) {
+  action: StageAction,
+): TicketStage | null {
+  return STAGE_TRANSITIONS[stage][action] ?? null;
+}
+
+export function isAuthorizedActor(
+  user: Pick<AuthUser, 'role' | 'divisi'>,
+  ticket: ActableTicket,
+): boolean {
+  if (user.role === Role.SUPERADMIN || user.divisi === null) return false;
+
+  switch (ticket.stage) {
     case 'MENUNGGU_MANAGER_ASAL':
-      return `Menunggu Manajer Divisi ${ticket.fromDivisi}`;
+      return isManagerRole(user.role) && user.divisi === ticket.fromDivisi;
     case 'MENUNGGU_MANAGER_TUJUAN':
-      return `Menunggu Manajer Divisi ${ticket.toDivisi}`;
+      return isManagerRole(user.role) && user.divisi === ticket.toDivisi;
     case 'MENUNGGU_STAF_TUJUAN':
-      return 'Diterima';
     case 'DIPROSES':
-      return 'Diproses';
-    case 'SELESAI':
-      return 'Selesai';
-    case 'DITOLAK':
-      return 'Ditolak';
+      return !isManagerRole(user.role) && user.divisi === ticket.toDivisi;
+    default:
+      return false;
   }
 }
