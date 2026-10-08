@@ -2,11 +2,14 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { parseTrustProxyHops } from './common/utils/trust-proxy-hops';
 
 export function configureApp(app: INestApplication): void {
   app.use(helmet());
   app.use(cookieParser());
-  app.getHttpAdapter().getInstance().disable('x-powered-by');
+  const server = app.getHttpAdapter().getInstance();
+  server.disable('x-powered-by');
+  server.set('trust proxy', parseTrustProxyHops(process.env.TRUST_PROXY_HOPS));
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN,
