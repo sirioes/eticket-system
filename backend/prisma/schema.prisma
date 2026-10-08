@@ -21,6 +21,7 @@ model User {
   tickets         Ticket[]           @relation("TicketCreatedBy")
   attachments     TicketAttachment[] @relation("AttachmentUploadedBy")
   rejectedTickets Ticket[]           @relation("TicketRejectedBy")
+  stageLogs       TicketStageLog[]   @relation("StageLogActor")
 
   @@unique([fullName])
 }
@@ -36,6 +37,7 @@ model Ticket {
   createdBy   User @relation("TicketCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
   attachments TicketAttachment[]
+  stageLogs   TicketStageLog[]
 
   rejectedAtStage TicketStage?
   rejectedById    Int?
@@ -65,6 +67,31 @@ model TicketAttachment {
   createdAt DateTime @default(now())
 
   @@index([ticketId])
+}
+
+model TicketStageLog {
+  id       String @id @default(uuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  action    TicketLogAction
+  fromStage TicketStage?
+  toStage   TicketStage
+
+  actorId Int
+  actor   User @relation("StageLogActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@unique([ticketId, fromStage])
+}
+
+enum TicketLogAction {
+  DIBUAT
+  TERIMA
+  TOLAK
+  PROSES
+  SELESAI
 }
 
 enum Role {
