@@ -339,6 +339,40 @@ describe('Auth (integration)', () => {
     });
   });
 
+  describe('throttling per client address behind the Next proxy', () => {
+    const FIRST_CLIENT = '203.0.113.10';
+    const SECOND_CLIENT = '203.0.113.20';
+
+    const loginFrom = (forwardedFor: string) =>
+      login('Manager Legal LG01', 'salah-total').set('X-Forwarded-For', forwardedFor);
+
+    const attemptsFrom = async (forwardedFor: (attempt: number) => string) => {
+      const statuses: number[] = [];
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        statuses.push((await loginFrom(forwardedFor(attempt))).status);
+      }
+      return statuses;
+    };
+
+    it('keeps a separate budget for each client address', async () => {
+      expect(await attemptsFrom(() => FIRST_CLIENT)).toEqual([401, 401, 401, 401, 401, 429]);
+
+      await loginFrom(SECOND_CLIENT).expect(401);
+    });
+
+    it('does not let a forged leading address reset the budget', async () => {
+      const statuses = await attemptsFrom((attempt) => `198.51.100.${attempt + 1}, ${FIRST_CLIENT}`);
+
+      expect(statuses).toEqual([401, 401, 401, 401, 401, 429]);
+    });
+
+    it('charges the rightmost address even when a leading one is already exhausted', async () => {
+      await attemptsFrom(() => FIRST_CLIENT);
+
+      await loginFrom(`${FIRST_CLIENT}, ${SECOND_CLIENT}`).expect(401);
+    });
+  });
+
   describe('authorization', () => {
     it('answers 401 before 403 when there is no session', async () => {
       await request(server()).get('/probe/undeclared').expect(401);
