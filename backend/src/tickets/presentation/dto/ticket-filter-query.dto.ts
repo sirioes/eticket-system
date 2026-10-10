@@ -12,7 +12,7 @@ import { EmptyToUndefined } from './empty-to-undefined';
 
 export const SEARCH_MAX_LENGTH = 100;
 
-const TICKET_ID_CHARACTERS = /^[A-Za-z0-9-]+$/;
+export const TICKET_ID_CHARACTERS = /^[A-Za-z0-9-]+$/;
 
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
