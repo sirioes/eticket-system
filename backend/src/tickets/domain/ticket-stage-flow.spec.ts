@@ -2,6 +2,7 @@ import { TicketStage } from '../../generated/prisma/client';
 import { Divisi } from '../../common/enums/divisi.enum';
 import { Role } from '../../common/enums/role.enum';
 import {
+  actionableStages,
   ActableTicket,
   isAuthorizedActor,
   resolveNextStage,
@@ -193,5 +194,41 @@ describe('isAuthorizedActor', () => {
         ),
       ).toBe(true);
     });
+  });
+});
+
+describe('actionableStages', () => {
+  it.each([Role.MANAGER_MAIN_OFFICE, Role.FINANCE_MANAGER_MAIN_OFFICE])(
+    'memberi manager tahap menunggu manager di kedua sisi (%s)',
+    (role) => {
+      expect(actionableStages({ role, divisi: Divisi.TAX })).toEqual({
+        outgoing: ['MENUNGGU_MANAGER_ASAL'],
+        incoming: ['MENUNGGU_MANAGER_TUJUAN'],
+      });
+    },
+  );
+
+  it.each([Role.TEAM_MAIN_OFFICE, Role.FINANCE_MAIN_OFFICE])(
+    'memberi staf hanya tahap pengerjaan di sisi masuk (%s)',
+    (role) => {
+      expect(actionableStages({ role, divisi: Divisi.TAX })).toEqual({
+        outgoing: [],
+        incoming: ['MENUNGGU_STAF_TUJUAN', 'DIPROSES'],
+      });
+    },
+  );
+
+  it('tidak memberi apa pun kepada superadmin', () => {
+    expect(
+      actionableStages({ role: Role.SUPERADMIN, divisi: Divisi.TAX }),
+    ).toEqual({ outgoing: [], incoming: [] });
+  });
+
+  it('memberi hasil sama untuk divisi IT dan divisi lain', () => {
+    const role = Role.MANAGER_MAIN_OFFICE;
+
+    expect(actionableStages({ role, divisi: Divisi.IT })).toEqual(
+      actionableStages({ role, divisi: Divisi.FINANCE }),
+    );
   });
 });

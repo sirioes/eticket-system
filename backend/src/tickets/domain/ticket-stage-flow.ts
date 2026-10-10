@@ -1,5 +1,6 @@
 import { TicketStage } from '../../generated/prisma/client';
 import type { AuthUser } from '../../auth/domain/auth-user';
+import { Divisi } from '../../common/enums/divisi.enum';
 import { isManagerRole, Role } from '../../common/enums/role.enum';
 import type { VisibleTicket } from './ticket-visibility';
 
@@ -58,4 +59,35 @@ export function isAuthorizedActor(
     default:
       return false;
   }
+}
+
+const ALL_STAGES = Object.values(TicketStage);
+
+export interface ActionableStages {
+  readonly outgoing: TicketStage[];
+  readonly incoming: TicketStage[];
+}
+
+export function actionableStages(user: {
+  readonly role: Role;
+  readonly divisi: Divisi;
+}): ActionableStages {
+  const otherDivisi = user.divisi === Divisi.IT ? Divisi.FINANCE : Divisi.IT;
+
+  return {
+    outgoing: ALL_STAGES.filter((stage) =>
+      isAuthorizedActor(user, {
+        fromDivisi: user.divisi,
+        toDivisi: otherDivisi,
+        stage,
+      }),
+    ),
+    incoming: ALL_STAGES.filter((stage) =>
+      isAuthorizedActor(user, {
+        fromDivisi: otherDivisi,
+        toDivisi: user.divisi,
+        stage,
+      }),
+    ),
+  };
 }
