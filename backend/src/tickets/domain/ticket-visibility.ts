@@ -10,6 +10,23 @@ export interface VisibleTicket {
   readonly rejectedAtStage: TicketStage | null;
 }
 
+export function canViewAsDestination(
+  role: Role,
+  stage: TicketStage,
+  rejectedAtStage: TicketStage | null,
+): boolean {
+  switch (stage) {
+    case 'MENUNGGU_MANAGER_ASAL':
+      return false;
+    case 'DITOLAK':
+      return rejectedAtStage !== 'MENUNGGU_MANAGER_ASAL';
+    case 'MENUNGGU_MANAGER_TUJUAN':
+      return isManagerRole(role);
+    default:
+      return true;
+  }
+}
+
 export function canViewTicket(
   user: Pick<AuthUser, 'role' | 'divisi'>,
   ticket: VisibleTicket,
@@ -19,14 +36,5 @@ export function canViewTicket(
   if (user.divisi === ticket.fromDivisi) return true;
   if (user.divisi !== ticket.toDivisi) return false;
 
-  switch (ticket.stage) {
-    case 'MENUNGGU_MANAGER_ASAL':
-      return false;
-    case 'DITOLAK':
-      return ticket.rejectedAtStage !== 'MENUNGGU_MANAGER_ASAL';
-    case 'MENUNGGU_MANAGER_TUJUAN':
-      return isManagerRole(user.role);
-    default:
-      return true;
-  }
+  return canViewAsDestination(user.role, ticket.stage, ticket.rejectedAtStage);
 }

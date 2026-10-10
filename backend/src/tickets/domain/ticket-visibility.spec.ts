@@ -1,7 +1,11 @@
 import { TicketStage } from '../../generated/prisma/client';
 import { Divisi } from '../../common/enums/divisi.enum';
 import { Role } from '../../common/enums/role.enum';
-import { canViewTicket, VisibleTicket } from './ticket-visibility';
+import {
+  canViewAsDestination,
+  canViewTicket,
+  VisibleTicket,
+} from './ticket-visibility';
 
 const ticket = (
   stage: TicketStage,
@@ -82,5 +86,51 @@ describe('canViewTicket', () => {
       expect(canViewTicket(manager(Divisi.TAX), rejected)).toBe(true);
       expect(canViewTicket(staff(Divisi.TAX), rejected)).toBe(true);
     });
+  });
+});
+
+describe('canViewAsDestination', () => {
+  it('menolak semua peran selama menunggu manager asal', () => {
+    expect(
+      canViewAsDestination(
+        Role.MANAGER_MAIN_OFFICE,
+        'MENUNGGU_MANAGER_ASAL',
+        null,
+      ),
+    ).toBe(false);
+  });
+
+  it('hanya mengizinkan manager menunggu manager tujuan', () => {
+    expect(
+      canViewAsDestination(
+        Role.FINANCE_MANAGER_MAIN_OFFICE,
+        'MENUNGGU_MANAGER_TUJUAN',
+        null,
+      ),
+    ).toBe(true);
+    expect(
+      canViewAsDestination(
+        Role.FINANCE_MAIN_OFFICE,
+        'MENUNGGU_MANAGER_TUJUAN',
+        null,
+      ),
+    ).toBe(false);
+  });
+
+  it('menyembunyikan penolakan di tahap asal dan menampilkan penolakan di tahap tujuan', () => {
+    expect(
+      canViewAsDestination(
+        Role.TEAM_MAIN_OFFICE,
+        'DITOLAK',
+        'MENUNGGU_MANAGER_ASAL',
+      ),
+    ).toBe(false);
+    expect(
+      canViewAsDestination(
+        Role.TEAM_MAIN_OFFICE,
+        'DITOLAK',
+        'MENUNGGU_MANAGER_TUJUAN',
+      ),
+    ).toBe(true);
   });
 });
