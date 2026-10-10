@@ -3,7 +3,9 @@ import type { AuthUser } from '../../auth/domain/auth-user';
 import { isManagerRole, Role } from '../../common/enums/role.enum';
 import type { VisibleTicket } from './ticket-visibility';
 
-export type StageAction = 'TERIMA' | 'TOLAK' | 'PROSES' | 'SELESAI';
+export const STAGE_ACTIONS = ['TERIMA', 'TOLAK', 'PROSES', 'SELESAI'] as const;
+
+export type StageAction = (typeof STAGE_ACTIONS)[number];
 
 export const STAGE_TRANSITIONS: Record<
   TicketStage,
