@@ -104,6 +104,22 @@ export abstract class TicketQueryRepository {
     stages: readonly TicketStage[],
   ): Promise<number>;
 
+  abstract countOutgoing(
+    scope: OutgoingScope,
+    filter: TicketListFilter,
+  ): Promise<number>;
+
+  abstract countIncoming(
+    scope: IncomingScope,
+    filter: TicketListFilter,
+  ): Promise<number>;
+
+  abstract listRecent(
+    outgoing: OutgoingScope,
+    incoming: IncomingScope,
+    limit: number,
+  ): Promise<TicketListItem[]>;
+
   abstract findOutgoingForExport(
     scope: OutgoingScope,
     filter: TicketListFilter,

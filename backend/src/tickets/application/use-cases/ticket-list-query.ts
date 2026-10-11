@@ -7,7 +7,11 @@ import {
   startOfNextWitaDay,
   startOfWitaDay,
 } from '../../domain/wita-date-range';
-import { TicketListFilter, TicketPage } from '../ports/ticket-query.repository';
+import {
+  TicketListFilter,
+  TicketListItem,
+  TicketPage,
+} from '../ports/ticket-query.repository';
 
 export const USER_WITHOUT_DIVISI_MESSAGE =
   'Akun tanpa divisi tidak memiliki daftar pengaduan';
@@ -84,20 +88,26 @@ export function toTicketListFilter(
   };
 }
 
+export function toTicketListItemView(
+  ticket: TicketListItem,
+): TicketListItemView {
+  return {
+    id: ticket.id,
+    descriptionPreview: toDescriptionPreview(ticket.description),
+    stage: ticket.stage,
+    fromDivisi: ticket.fromDivisi,
+    toDivisi: ticket.toDivisi,
+    createdAt: ticket.createdAt,
+    attachmentCount: ticket.attachmentCount,
+  };
+}
+
 export function toTicketListView(
   page: TicketPage,
   pagination: Pick<TicketListQuery, 'page' | 'limit'>,
 ): TicketListView {
   return {
-    items: page.items.map((ticket) => ({
-      id: ticket.id,
-      descriptionPreview: toDescriptionPreview(ticket.description),
-      stage: ticket.stage,
-      fromDivisi: ticket.fromDivisi,
-      toDivisi: ticket.toDivisi,
-      createdAt: ticket.createdAt,
-      attachmentCount: ticket.attachmentCount,
-    })),
+    items: page.items.map(toTicketListItemView),
     total: page.total,
     page: pagination.page,
     limit: pagination.limit,

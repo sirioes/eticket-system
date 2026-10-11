@@ -9,6 +9,7 @@ import {
   TicketDetail,
   TicketExportRow,
   TicketListFilter,
+  TicketListItem,
   TicketPage,
   TicketQueryRepository,
 } from '../application/ports/ticket-query.repository';
@@ -54,6 +55,12 @@ const DETAIL_SELECT = {
     orderBy: { createdAt: 'asc' },
   },
 } as const satisfies Prisma.TicketSelect;
+
+type ListedTicket = Prisma.TicketGetPayload<{ select: typeof LIST_SELECT }>;
+
+function toListItem({ _count, ...ticket }: ListedTicket): TicketListItem {
+  return { ...ticket, attachmentCount: _count.attachments };
+}
 
 @Injectable()
 export class PrismaTicketQueryRepository implements TicketQueryRepository {
@@ -116,6 +123,44 @@ export class PrismaTicketQueryRepository implements TicketQueryRepository {
     });
   }
 
+  countOutgoing(
+    scope: OutgoingScope,
+    filter: TicketListFilter,
+  ): Promise<number> {
+    return this.prisma.ticket.count({
+      where: buildOutgoingWhere(scope, filter),
+    });
+  }
+
+  countIncoming(
+    scope: IncomingScope,
+    filter: TicketListFilter,
+  ): Promise<number> {
+    return this.prisma.ticket.count({
+      where: buildIncomingWhere(scope, filter),
+    });
+  }
+
+  async listRecent(
+    outgoing: OutgoingScope,
+    incoming: IncomingScope,
+    limit: number,
+  ): Promise<TicketListItem[]> {
+    const tickets = await this.prisma.ticket.findMany({
+      where: {
+        OR: [
+          buildOutgoingWhere(outgoing, {}),
+          buildIncomingWhere(incoming, {}),
+        ],
+      },
+      orderBy: [...NEWEST_FIRST],
+      take: limit,
+      select: LIST_SELECT,
+    });
+
+    return tickets.map(toListItem);
+  }
+
   async findOutgoingForExport(
     scope: OutgoingScope,
     filter: TicketListFilter,
@@ -160,12 +205,6 @@ export class PrismaTicketQueryRepository implements TicketQueryRepository {
       this.prisma.ticket.count({ where }),
     ]);
 
-    return {
-      items: tickets.map(({ _count, ...ticket }) => ({
-        ...ticket,
-        attachmentCount: _count.attachments,
-      })),
-      total,
-    };
+    return { items: tickets.map(toListItem), total };
   }
 }

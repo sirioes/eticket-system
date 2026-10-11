@@ -31,6 +31,11 @@ import {
   GetActionCountsUseCase,
 } from '../application/use-cases/get-action-counts.use-case';
 import { ExportOutgoingTicketsUseCase } from '../application/use-cases/export-outgoing-tickets.use-case';
+import { GetRecentTicketsUseCase } from '../application/use-cases/get-recent-tickets.use-case';
+import {
+  GetTicketStatsUseCase,
+  TicketStatsView,
+} from '../application/use-cases/get-ticket-stats.use-case';
 import {
   GetTicketByIdUseCase,
   TicketDetailView,
@@ -41,7 +46,10 @@ import {
 } from '../application/use-cases/advance-ticket-stage.use-case';
 import { ListIncomingTicketsUseCase } from '../application/use-cases/list-incoming-tickets.use-case';
 import { ListOutgoingTicketsUseCase } from '../application/use-cases/list-outgoing-tickets.use-case';
-import { TicketListView } from '../application/use-cases/ticket-list-query';
+import {
+  TicketListItemView,
+  TicketListView,
+} from '../application/use-cases/ticket-list-query';
 import { AdvanceTicketStageDto } from './dto/advance-ticket-stage.dto';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ListTicketsQueryDto } from './dto/list-tickets-query.dto';
@@ -68,6 +76,8 @@ export class TicketsController {
     private readonly listOutgoingTickets: ListOutgoingTicketsUseCase,
     private readonly listIncomingTickets: ListIncomingTicketsUseCase,
     private readonly getActionCounts: GetActionCountsUseCase,
+    private readonly getTicketStats: GetTicketStatsUseCase,
+    private readonly getRecentTickets: GetRecentTicketsUseCase,
     private readonly getTicketById: GetTicketByIdUseCase,
     private readonly advanceTicketStage: AdvanceTicketStageUseCase,
     private readonly exportOutgoingTickets: ExportOutgoingTicketsUseCase,
@@ -125,6 +135,18 @@ export class TicketsController {
   @Get('action-counts')
   actionCounts(@CurrentUser() user: AuthUser): Promise<ActionCountsView> {
     return this.getActionCounts.execute(user);
+  }
+
+  @Roles(...DIVISI_MEMBER_ROLES)
+  @Get('stats')
+  stats(@CurrentUser() user: AuthUser): Promise<TicketStatsView> {
+    return this.getTicketStats.execute(user);
+  }
+
+  @Roles(...DIVISI_MEMBER_ROLES)
+  @Get('recent')
+  recent(@CurrentUser() user: AuthUser): Promise<TicketListItemView[]> {
+    return this.getRecentTickets.execute(user);
   }
 
   @AnyRole()
