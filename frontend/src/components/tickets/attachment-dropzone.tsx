@@ -12,6 +12,7 @@ interface AttachmentDropzoneProps {
   files: File[];
   errors: string[];
   disabled: boolean;
+  maxFiles?: number;
   onAdd: (files: File[]) => void;
   onRemove: (file: File) => void;
 }
@@ -20,6 +21,7 @@ export function AttachmentDropzone({
   files,
   errors,
   disabled,
+  maxFiles = MAX_ATTACHMENTS_PER_TICKET,
   onAdd,
   onRemove,
 }: AttachmentDropzoneProps) {
@@ -75,13 +77,13 @@ export function AttachmentDropzone({
         </div>
       </div>
 
-      <p className="text-xs text-ink/60">
+      <p className="text-xs text-ink/70">
         Format: PDF, JPG, PNG, WEBP. Maksimal {MAX_ATTACHMENT_BYTES / 1024 / 1024} MB per file,{" "}
-        {MAX_ATTACHMENTS_PER_TICKET} file.
+        {maxFiles} file.
       </p>
 
       {errors.length > 0 && (
-        <ul role="alert" className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-red">
+        <ul role="alert" className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
           {errors.map((error, index) => (
             <li key={index}>{error}</li>
           ))}
@@ -96,7 +98,7 @@ export function AttachmentDropzone({
               className="flex items-center justify-between gap-3 rounded-xl bg-mist px-4 py-2.5 text-sm"
             >
               <span className="min-w-0 flex-1 truncate">{file.name}</span>
-              <span className="shrink-0 font-mono text-xs text-ink/60">
+              <span className="shrink-0 font-mono text-xs text-ink/70">
                 {formatFileSize(file.size)}
               </span>
               <button
@@ -104,7 +106,7 @@ export function AttachmentDropzone({
                 disabled={disabled}
                 onClick={() => onRemove(file)}
                 aria-label={`Buang ${file.name}`}
-                className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-red transition-colors duration-200 hover:bg-red/10 disabled:opacity-60"
+                className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-wine transition-colors duration-200 hover:bg-red/10 disabled:opacity-60"
               >
                 Buang
               </button>

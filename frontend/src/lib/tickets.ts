@@ -14,7 +14,13 @@ import type {
 
 const UPLOAD_FIELD_NAME = "file";
 
+const TICKET_ID_PATTERN = /^[A-Za-z0-9-]{1,100}$/;
+
 const QUERY_KEYS = ["search", "status", "divisi", "dateFrom", "dateTo", "page", "limit"] as const;
+
+export function isValidTicketId(id: string): boolean {
+  return TICKET_ID_PATTERN.test(id);
+}
 
 function ticketPath(id: string): string {
   return `/tickets/${encodeURIComponent(id)}`;
@@ -63,6 +69,10 @@ export function getTicket(id: string): Promise<TicketDetail> {
 
 export function advanceTicketStage(id: string, action: StageAction): Promise<AdvancedTicket> {
   return api.patch<AdvancedTicket>(`${ticketPath(id)}/stage`, { action });
+}
+
+export function downloadAttachment(ticketId: string, attachmentId: string): Promise<DownloadedFile> {
+  return api.download(`${ticketPath(ticketId)}/attachments/${encodeURIComponent(attachmentId)}`);
 }
 
 export function downloadOutgoingExport(filters: TicketListFilters): Promise<DownloadedFile> {
