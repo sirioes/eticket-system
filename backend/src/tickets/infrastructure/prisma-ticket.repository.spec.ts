@@ -52,7 +52,7 @@ describe('PrismaTicketRepository', () => {
   });
 
   describe('insert', () => {
-    it('hanya menulis lima kolom yang diizinkan', async () => {
+    it('hanya menulis lima kolom yang diizinkan beserta log DIBUAT', async () => {
       ticketDelegate.create.mockResolvedValue({ id: newTicket.id });
 
       await repository.insert({
@@ -68,9 +68,28 @@ describe('PrismaTicketRepository', () => {
           fromDivisi: Divisi.IT,
           toDivisi: Divisi.FINANCE,
           createdById: 11,
+          stageLogs: {
+            create: {
+              action: 'DIBUAT',
+              toStage: 'MENUNGGU_MANAGER_ASAL',
+              actorId: 11,
+            },
+          },
         },
         select: { id: true },
       });
+    });
+
+    it('mencatat pembuat tiket sebagai pelaku log DIBUAT, bukan data lain dari input', async () => {
+      ticketDelegate.create.mockResolvedValue({ id: newTicket.id });
+
+      await repository.insert({
+        ...newTicket,
+        actorId: 999,
+      } as typeof newTicket);
+
+      const { data } = ticketDelegate.create.mock.calls[0][0];
+      expect(data.stageLogs.create.actorId).toBe(newTicket.createdById);
     });
 
     it('menerjemahkan P2002 menjadi DuplicateTicketIdError', async () => {

@@ -1,0 +1,19 @@
+-- CreateTable
+CREATE TABLE `TicketStageLog` (
+    `id` VARCHAR(191) NOT NULL,
+    `ticketId` VARCHAR(191) NOT NULL,
+    `action` ENUM('DIBUAT', 'TERIMA', 'TOLAK', 'PROSES', 'SELESAI') NOT NULL,
+    `fromStage` ENUM('MENUNGGU_MANAGER_ASAL', 'MENUNGGU_MANAGER_TUJUAN', 'MENUNGGU_STAF_TUJUAN', 'DIPROSES', 'SELESAI', 'DITOLAK') NULL,
+    `toStage` ENUM('MENUNGGU_MANAGER_ASAL', 'MENUNGGU_MANAGER_TUJUAN', 'MENUNGGU_STAF_TUJUAN', 'DIPROSES', 'SELESAI', 'DITOLAK') NOT NULL,
+    `actorId` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `TicketStageLog_ticketId_fromStage_key`(`ticketId`, `fromStage`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `TicketStageLog` ADD CONSTRAINT `TicketStageLog_ticketId_fkey` FOREIGN KEY (`ticketId`) REFERENCES `Ticket`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `TicketStageLog` ADD CONSTRAINT `TicketStageLog_actorId_fkey` FOREIGN KEY (`actorId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

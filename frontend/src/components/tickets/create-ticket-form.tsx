@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/components/layout/user-context";
 import { AttachmentDropzone } from "@/components/tickets/attachment-dropzone";
 import { DivisiDropdown } from "@/components/tickets/divisi-dropdown";
+import { PRIMARY_BUTTON_CLASS } from "@/components/ui/button-class";
 import { INPUT_CLASS, TEXTAREA_CLASS } from "@/components/ui/input-class";
 import { errorMessage, isUnauthorized } from "@/lib/api";
 import { addFiles } from "@/lib/attachment-files";
@@ -26,9 +27,6 @@ interface SubmitResult {
 const ALL_DIVISI = Object.keys(DIVISI_LABEL) as Divisi[];
 
 const LABEL_CLASS = "text-sm font-medium";
-
-const PRIMARY_BUTTON_CLASS =
-  "flex h-12 items-center justify-center gap-2 rounded-xl bg-teal px-6 font-semibold text-mist transition-[background-color,transform] duration-200 ease-smooth hover:bg-ink active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80";
 
 function characterCount(text: string): number {
   return [...text].length;

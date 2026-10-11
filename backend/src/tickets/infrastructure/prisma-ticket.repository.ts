@@ -31,6 +31,13 @@ export class PrismaTicketRepository implements TicketRepository {
           fromDivisi: ticket.fromDivisi,
           toDivisi: ticket.toDivisi,
           createdById: ticket.createdById,
+          stageLogs: {
+            create: {
+              action: 'DIBUAT',
+              toStage: 'MENUNGGU_MANAGER_ASAL',
+              actorId: ticket.createdById,
+            },
+          },
         },
         select: { id: true },
       });

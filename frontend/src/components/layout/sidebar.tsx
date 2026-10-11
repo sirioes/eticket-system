@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DIVISI_LABEL } from "@/lib/labels";
 import { LogoutButton } from "@/components/layout/logout-button";
+import { useActionCounts } from "@/components/layout/use-action-counts";
 import type { SessionUser } from "@/types/auth.types";
 
 interface NavItem {
   href: string;
   label: string;
   icon: string;
+  badge?: number;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -26,6 +28,22 @@ const CREATE_TICKET_ITEM: NavItem = {
   label: "Buat Pengaduan",
   icon: "M6 3h9l4 4v14H6zM15 3v4h4M12 11v6M9 14h6",
 };
+
+const OUTGOING_ITEM: NavItem = {
+  href: "/daftar-pengaduan/keluar",
+  label: "Pengaduan Keluar",
+  icon: "M22 2 11 13M22 2l-7 20-4-9-9-4z",
+};
+
+const INCOMING_ITEM: NavItem = {
+  href: "/daftar-pengaduan/masuk",
+  label: "Pengaduan Masuk",
+  icon: "M22 12h-6l-2 3h-4l-2-3H2M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z",
+};
+
+function badgeText(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
 
 const PASSWORD_ITEM: NavItem = {
   href: "/ganti-password",
@@ -72,6 +90,15 @@ function NavLink({
         <path d={item.icon} />
       </svg>
       {item.label}
+      {item.badge !== undefined && item.badge > 0 && (
+        <span
+          key={item.badge}
+          className="ml-auto grid h-6 min-w-6 animate-pop-in place-items-center rounded-full bg-yellow px-1.5 font-mono text-xs font-semibold text-ink"
+        >
+          {badgeText(item.badge)}
+          <span className="sr-only"> perlu ditindaklanjuti</span>
+        </span>
+      )}
     </Link>
   );
 }
@@ -84,8 +111,16 @@ interface SidebarProps {
 
 export function Sidebar({ user, open, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const navItems =
-    user.role === "SUPERADMIN" ? NAV_ITEMS : [...NAV_ITEMS, CREATE_TICKET_ITEM];
+  const isDivisiMember = user.role !== "SUPERADMIN";
+  const counts = useActionCounts(isDivisiMember, pathname);
+  const navItems = isDivisiMember
+    ? [
+        ...NAV_ITEMS,
+        CREATE_TICKET_ITEM,
+        { ...OUTGOING_ITEM, badge: counts.outgoing },
+        { ...INCOMING_ITEM, badge: counts.incoming },
+      ]
+    : NAV_ITEMS;
 
   useEffect(() => {
     if (!open) return;

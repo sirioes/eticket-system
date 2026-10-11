@@ -50,6 +50,46 @@ jobs:
       - run: npm run build
       - run: npm test
 
+  backend-db-test:
+    name: backend-db-test
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4@sha256:6ea90827b1100f8f2ae306a539f86d2c264a26ed435a2a9f75551dd5c3aeb242
+        env:
+          MYSQL_DATABASE: eticket_test
+          MYSQL_USER: eticket
+          MYSQL_PASSWORD: eticket_test
+          MYSQL_RANDOM_ROOT_PASSWORD: 'yes'
+          TZ: Asia/Makassar
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ueticket -peticket_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      DATABASE_URL: mysql://eticket:eticket_test@127.0.0.1:3306/eticket_test
+      DB_SSL_CA: /tmp/mysql-ca.pem
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: docker cp "${{ job.services.mysql.id }}:/var/lib/mysql/ca.pem" "$DB_SSL_CA"
+      - run: npx prisma migrate deploy --config prisma7.config.ts
+      - run: npm run test:db
+
   backend-gitleaks:
     name: backend-gitleaks
     runs-on: ubuntu-latest
@@ -64,7 +104,7 @@ jobs:
 
   backend-passed:
     name: backend-passed
-    needs: [changes, backend-test, backend-gitleaks]
+    needs: [changes, backend-test, backend-db-test, backend-gitleaks]
     if: always()
     runs-on: ubuntu-latest
     steps:

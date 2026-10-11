@@ -30,7 +30,11 @@ function rejectionReason(file: File, accepted: File[]): string | null {
   return null;
 }
 
-export function addFiles(current: File[], incoming: File[]): FileSelection {
+export function addFiles(
+  current: File[],
+  incoming: File[],
+  limit: number = MAX_ATTACHMENTS_PER_TICKET,
+): FileSelection {
   const files = [...current];
   const errors: string[] = [];
   let limitReached = false;
@@ -39,7 +43,7 @@ export function addFiles(current: File[], incoming: File[]): FileSelection {
     const reason = rejectionReason(file, files);
     if (reason) {
       errors.push(`${file.name}: ${reason}`);
-    } else if (files.length >= MAX_ATTACHMENTS_PER_TICKET) {
+    } else if (files.length >= limit) {
       limitReached = true;
     } else {
       files.push(file);
