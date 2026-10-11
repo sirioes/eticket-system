@@ -78,6 +78,18 @@ describe('buildOutgoingWhere', () => {
     });
   });
 
+  it.each([
+    ['%', '\\%'],
+    ['_', '\\_'],
+    ['\\', '\\\\'],
+    ['IT_20%26', 'IT\\_20\\%26'],
+    ['IT-2026', 'IT-2026'],
+  ])('meng-escape karakter khusus LIKE pada pencarian %p', (search, escaped) => {
+    expect(buildOutgoingWhere(scope, { search }).AND).toContainEqual({
+      id: { contains: escaped },
+    });
+  });
+
   it('mendukung rentang tanggal dengan satu sisi saja', () => {
     const createdFrom = new Date('2026-09-30T16:00:00Z');
     const createdBefore = new Date('2026-10-07T16:00:00Z');

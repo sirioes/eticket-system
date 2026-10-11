@@ -10,6 +10,12 @@ import { canViewAsDestination } from '../domain/ticket-visibility';
 
 const ALL_STAGES = Object.values(TicketStage);
 
+const LIKE_SPECIAL_CHARACTERS = /[\\%_]/g;
+
+function escapeLikePattern(value: string): string {
+  return value.replace(LIKE_SPECIAL_CHARACTERS, '\\$&');
+}
+
 const REJECTABLE_STAGES = ALL_STAGES.filter(
   (stage) => STAGE_TRANSITIONS[stage].TOLAK !== undefined,
 );
@@ -21,7 +27,7 @@ function filterClauses(
   const clauses: Prisma.TicketWhereInput[] = [];
 
   if (filter.search !== undefined) {
-    clauses.push({ id: { contains: filter.search } });
+    clauses.push({ id: { contains: escapeLikePattern(filter.search) } });
   }
   if (filter.stage !== undefined) {
     clauses.push({ stage: filter.stage });
