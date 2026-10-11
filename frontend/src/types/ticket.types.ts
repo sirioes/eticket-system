@@ -44,6 +44,13 @@ export interface ActionCounts {
   incoming: number;
 }
 
+export interface TicketStats {
+  total: number;
+  incoming: number;
+  outgoing: number;
+  selesai: number;
+}
+
 export interface TicketPerson {
   fullName: string;
   divisi: Divisi | null;

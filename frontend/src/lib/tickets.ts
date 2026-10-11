@@ -8,7 +8,9 @@ import type {
   TicketDetail,
   TicketList,
   TicketListFilters,
+  TicketListItem,
   TicketListQuery,
+  TicketStats,
   UploadedAttachment,
 } from "@/types/ticket.types";
 
@@ -61,6 +63,14 @@ export function listIncomingTickets(query: TicketListQuery): Promise<TicketList>
 
 export function getActionCounts(): Promise<ActionCounts> {
   return api.get<ActionCounts>("/tickets/action-counts");
+}
+
+export function getTicketStats(): Promise<TicketStats> {
+  return api.get<TicketStats>("/tickets/stats");
+}
+
+export function getRecentTickets(): Promise<TicketListItem[]> {
+  return api.get<TicketListItem[]>("/tickets/recent");
 }
 
 export function getTicket(id: string): Promise<TicketDetail> {
