@@ -4,29 +4,85 @@ export type TicketStage =
   | 'MENUNGGU_MANAGER_ASAL' | 'MENUNGGU_MANAGER_TUJUAN'
   | 'MENUNGGU_STAF_TUJUAN' | 'DIPROSES' | 'SELESAI' | 'DITOLAK';
 
-export interface PaginationMeta {
+export type StageAction = 'TERIMA' | 'TOLAK' | 'PROSES' | 'SELESAI';
+
+export type TicketLogAction = 'DIBUAT' | StageAction;
+
+export interface TicketListFilters {
+  search?: string;
+  status?: TicketStage;
+  divisi?: Divisi;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface TicketListQuery extends TicketListFilters {
+  page?: number;
+  limit?: number;
+}
+
+export interface TicketListItem {
+  id: string;
+  descriptionPreview: string;
+  stage: TicketStage;
+  fromDivisi: Divisi;
+  toDivisi: Divisi;
+  createdAt: string;
+  attachmentCount: number;
+}
+
+export interface TicketList {
+  items: TicketListItem[];
+  total: number;
   page: number;
   limit: number;
-  total: number;
   totalPages: number;
 }
 
-export interface Paginated<T> {
-  data: T[];
-  meta: PaginationMeta;
-}
-
-export interface TicketStats {
+export interface ActionCounts {
   outgoing: number;
   incoming: number;
-  selesai: number;
-  total: number;
 }
 
-export interface TicketListParams {
-  page?: number;
-  search?: string;
-  status?: TicketStage;
+export interface TicketPerson {
+  fullName: string;
+  divisi: Divisi | null;
+}
+
+export interface TicketAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+}
+
+export interface TicketTimelineEntry {
+  action: TicketLogAction;
+  fromStage: TicketStage | null;
+  toStage: TicketStage;
+  createdAt: string;
+  actor: TicketPerson;
+}
+
+export interface TicketDetail {
+  id: string;
+  description: string;
+  stage: TicketStage;
+  rejectedAtStage: TicketStage | null;
+  fromDivisi: Divisi;
+  toDivisi: Divisi;
+  createdAt: string;
+  createdBy: TicketPerson;
+  attachments: TicketAttachment[];
+  timeline: TicketTimelineEntry[];
+  isCreator: boolean;
+  availableActions: StageAction[];
+  canUploadAttachment: boolean;
+}
+
+export interface AdvancedTicket {
+  id: string;
+  stage: TicketStage;
 }
 
 export interface CreateTicketInput {
@@ -38,9 +94,4 @@ export interface CreatedTicket {
   id: string;
 }
 
-export interface UploadedAttachment {
-  id: string;
-  fileName: string;
-  mimeType: string;
-  size: number;
-}
+export type UploadedAttachment = TicketAttachment;
