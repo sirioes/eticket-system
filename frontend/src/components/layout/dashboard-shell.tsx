@@ -64,7 +64,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     <div className="flex flex-1 bg-haze">
       <Sidebar user={user} open={menuOpen} onClose={closeMenu} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar menuOpen={menuOpen} onMenu={() => setMenuOpen(true)} />
+        <Topbar
+          menuOpen={menuOpen}
+          onMenu={() => setMenuOpen(true)}
+          canSearch={user.divisi !== null}
+        />
         <main className="flex-1 px-4 pb-10 sm:px-6 lg:px-10">
           <UserContext value={user}>{children}</UserContext>
         </main>

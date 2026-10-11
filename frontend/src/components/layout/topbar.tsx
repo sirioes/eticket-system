@@ -1,5 +1,7 @@
 "use client";
 
+import { TicketSearch } from "@/components/layout/ticket-search";
+
 const TODAY_FORMAT = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Makassar",
   day: "numeric",
@@ -10,12 +12,14 @@ const TODAY_FORMAT = new Intl.DateTimeFormat("id-ID", {
 export function Topbar({
   menuOpen,
   onMenu,
+  canSearch,
 }: {
   menuOpen: boolean;
   onMenu: () => void;
+  canSearch: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between gap-3 bg-haze/85 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 backdrop-blur sm:px-6 lg:px-10 lg:pt-6">
+    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 bg-haze/85 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 backdrop-blur sm:px-6 lg:px-10 lg:pt-6">
       <button
         type="button"
         onClick={onMenu}
@@ -36,6 +40,9 @@ export function Topbar({
           <path d="M4 7h16M4 12h16M4 17h10" />
         </svg>
       </button>
+      {canSearch && (
+        <TicketSearch className="order-last basis-full sm:order-0 sm:max-w-md sm:flex-1 sm:basis-auto" />
+      )}
       <p
         className="ml-auto animate-fade-in rounded-xl bg-mist px-3 py-2 text-xs font-medium text-ink/70 shadow-sm sm:text-sm"
         suppressHydrationWarning
