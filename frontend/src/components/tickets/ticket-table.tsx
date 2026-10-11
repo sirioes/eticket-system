@@ -19,7 +19,7 @@ function counterpart(item: TicketListItem, direction: TicketDirection): string {
   return DIVISI_LABEL[direction === "outgoing" ? item.toDivisi : item.fromDivisi];
 }
 
-function Attachments({ count }: { count: number }) {
+export function Attachments({ count }: { count: number }) {
   if (count === 0) return <span className="text-ink/70">Tidak ada</span>;
   return (
     <span className="inline-flex items-center gap-1.5 font-mono text-xs text-ink">
@@ -40,7 +40,7 @@ function Attachments({ count }: { count: number }) {
   );
 }
 
-function DetailLink({ id }: { id: string }) {
+export function DetailLink({ id }: { id: string }) {
   return (
     <Link href={ticketDetailHref(id)} aria-label={`Detail pengaduan ${id}`} className={DETAIL_CLASS}>
       DETAIL

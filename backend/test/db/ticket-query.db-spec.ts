@@ -4,6 +4,8 @@ import { Role } from '../../src/common/enums/role.enum';
 import { TicketStage } from '../../src/generated/prisma/client';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { ExportOutgoingTicketsUseCase } from '../../src/tickets/application/use-cases/export-outgoing-tickets.use-case';
+import { GetRecentTicketsUseCase } from '../../src/tickets/application/use-cases/get-recent-tickets.use-case';
+import { GetTicketStatsUseCase } from '../../src/tickets/application/use-cases/get-ticket-stats.use-case';
 import { GetActionCountsUseCase } from '../../src/tickets/application/use-cases/get-action-counts.use-case';
 import { ListIncomingTicketsUseCase } from '../../src/tickets/application/use-cases/list-incoming-tickets.use-case';
 import { ListOutgoingTicketsUseCase } from '../../src/tickets/application/use-cases/list-outgoing-tickets.use-case';
@@ -43,8 +45,18 @@ describe('PrismaTicketQueryRepository on MySQL', () => {
 
   beforeEach(async () => {
     await resetDatabase(prisma);
-    itStaff = await seedUser(prisma, 'Staf IT DB01', Role.TEAM_MAIN_OFFICE, Divisi.IT);
-    taxStaff = await seedUser(prisma, 'Staf Tax DB03', Role.TEAM_MAIN_OFFICE, Divisi.TAX);
+    itStaff = await seedUser(
+      prisma,
+      'Staf IT DB01',
+      Role.TEAM_MAIN_OFFICE,
+      Divisi.IT,
+    );
+    taxStaff = await seedUser(
+      prisma,
+      'Staf Tax DB03',
+      Role.TEAM_MAIN_OFFICE,
+      Divisi.TAX,
+    );
     taxManager = await seedUser(
       prisma,
       'Manager Tax DB04',
@@ -131,6 +143,127 @@ describe('PrismaTicketQueryRepository on MySQL', () => {
     });
   });
 
+  describe('dashboard', () => {
+    const stats = (viewer: SeededUser) =>
+      new GetTicketStatsUseCase(repository).execute(asAuthUser(viewer));
+
+    const recent = async (viewer: SeededUser) =>
+      (
+        await new GetRecentTicketsUseCase(repository).execute(
+          asAuthUser(viewer),
+        )
+      ).map((item) => item.id);
+
+    const seedFromTax = (id: string, stage: TicketStage, createdAt?: Date) =>
+      seedTicket(prisma, {
+        id,
+        fromDivisi: Divisi.TAX,
+        toDivisi: Divisi.IT,
+        createdById: taxStaff.id,
+        stage,
+        ...(createdAt && { createdAt }),
+      });
+
+    it('counts completed tickets from the incoming side only', async () => {
+      await seedFromIt('IT-DONE-IN', 'SELESAI');
+      await seedFromTax('TAX-DONE-OUT', 'SELESAI');
+      await seedFromTax('TAX-OPEN-OUT', 'DIPROSES');
+
+      await expect(stats(taxStaff)).resolves.toEqual({
+        total: 3,
+        incoming: 1,
+        outgoing: 2,
+        selesai: 1,
+      });
+      await expect(stats(itStaff)).resolves.toEqual({
+        total: 3,
+        incoming: 2,
+        outgoing: 1,
+        selesai: 1,
+      });
+    });
+
+    it('applies the incoming visibility rules to the incoming count and the total', async () => {
+      await seedFromIt('IT-ASAL', 'MENUNGGU_MANAGER_ASAL');
+      await seedFromIt('IT-TUJUAN', 'MENUNGGU_MANAGER_TUJUAN');
+      await seedFromIt('IT-STAF', 'MENUNGGU_STAF_TUJUAN');
+      await seedFromIt('IT-TOLAK-ASAL', 'DITOLAK', {
+        rejectedAtStage: 'MENUNGGU_MANAGER_ASAL',
+      });
+
+      await expect(stats(taxManager)).resolves.toMatchObject({
+        incoming: 2,
+        outgoing: 0,
+        total: 2,
+      });
+      await expect(stats(taxStaff)).resolves.toMatchObject({
+        incoming: 1,
+        outgoing: 0,
+        total: 1,
+      });
+      await expect(stats(itStaff)).resolves.toMatchObject({
+        incoming: 0,
+        outgoing: 4,
+        total: 4,
+      });
+    });
+
+    it('never counts tickets between two other divisi', async () => {
+      const legalStaff = await seedUser(
+        prisma,
+        'Staf Legal DB05',
+        Role.TEAM_MAIN_OFFICE,
+        Divisi.LEGAL,
+      );
+      await seedFromIt('IT-TAX', 'SELESAI');
+
+      await expect(stats(legalStaff)).resolves.toEqual({
+        total: 0,
+        incoming: 0,
+        outgoing: 0,
+        selesai: 0,
+      });
+      await expect(recent(legalStaff)).resolves.toEqual([]);
+    });
+
+    it('mixes incoming and outgoing tickets, newest first, at most seven', async () => {
+      for (let index = 1; index <= 5; index += 1) {
+        await seedFromIt(`IT-OUT-${index}`, 'SELESAI', {
+          createdAt: new Date(`2026-10-0${index}T02:00:00.000Z`),
+        });
+      }
+      for (let index = 6; index <= 9; index += 1) {
+        await seedFromTax(
+          `TAX-OUT-${index}`,
+          'SELESAI',
+          new Date(`2026-10-0${index}T02:00:00.000Z`),
+        );
+      }
+
+      await expect(recent(taxStaff)).resolves.toEqual([
+        'TAX-OUT-9',
+        'TAX-OUT-8',
+        'TAX-OUT-7',
+        'TAX-OUT-6',
+        'IT-OUT-5',
+        'IT-OUT-4',
+        'IT-OUT-3',
+      ]);
+    });
+
+    it('hides incoming tickets the viewer may not see from the recent list', async () => {
+      await seedFromIt('IT-ASAL', 'MENUNGGU_MANAGER_ASAL');
+      await seedFromIt('IT-TUJUAN', 'MENUNGGU_MANAGER_TUJUAN');
+      await seedFromIt('IT-STAF', 'MENUNGGU_STAF_TUJUAN');
+
+      await expect(recent(taxManager)).resolves.toEqual(
+        expect.arrayContaining(['IT-TUJUAN', 'IT-STAF']),
+      );
+      await expect(recent(taxManager)).resolves.not.toContain('IT-ASAL');
+      await expect(recent(taxStaff)).resolves.toEqual(['IT-STAF']);
+    });
+  });
+
   describe('filters', () => {
     const outgoing = (filter: Record<string, string> = {}) =>
       new ListOutgoingTicketsUseCase(repository)
@@ -203,7 +336,9 @@ describe('PrismaTicketQueryRepository on MySQL', () => {
         stage: 'SELESAI',
       });
 
-      await expect(outgoing({ divisi: Divisi.TAX })).resolves.toEqual(['IT-TAX']);
+      await expect(outgoing({ divisi: Divisi.TAX })).resolves.toEqual([
+        'IT-TAX',
+      ]);
       await expect(outgoing({ divisi: Divisi.IT })).resolves.toEqual([]);
     });
   });

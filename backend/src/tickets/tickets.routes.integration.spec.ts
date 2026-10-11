@@ -14,6 +14,7 @@ import { Role } from '../common/enums/role.enum';
 import {
   TicketDetail,
   TicketExportRow,
+  TicketListItem,
   TicketPage,
   TicketQueryRepository,
 } from './application/ports/ticket-query.repository';
@@ -102,6 +103,27 @@ class FakeTicketQueryRepository extends TicketQueryRepository {
 
   async countIncomingInStages() {
     return 3;
+  }
+
+  readonly countOutgoingCalls: unknown[][] = [];
+  readonly countIncomingCalls: unknown[][] = [];
+  readonly listRecentCalls: unknown[][] = [];
+  recent: TicketListItem[] = [];
+
+  async countOutgoing(...args: unknown[]) {
+    this.countOutgoingCalls.push(args);
+    return 4;
+  }
+
+  async countIncoming(...args: unknown[]) {
+    this.countIncomingCalls.push(args);
+    const filter = args[1] as { stage?: string };
+    return filter.stage === 'SELESAI' ? 1 : 6;
+  }
+
+  async listRecent(...args: unknown[]) {
+    this.listRecentCalls.push(args);
+    return this.recent;
   }
 
   exportRows: TicketExportRow[] = [];
@@ -217,6 +239,8 @@ describe('Tickets read and stage routes (integration)', () => {
       ['GET', '/tickets/outgoing'],
       ['GET', '/tickets/incoming'],
       ['GET', '/tickets/action-counts'],
+      ['GET', '/tickets/stats'],
+      ['GET', '/tickets/recent'],
       ['GET', '/tickets/IT-2026-0001'],
       ['PATCH', '/tickets/IT-2026-0001/stage'],
     ])('rejects %s %s without a session', async (method, path) => {
@@ -334,6 +358,95 @@ describe('Tickets read and stage routes (integration)', () => {
         .get('/tickets/action-counts')
         .set('Cookie', await sessionCookieFor(SUPERADMIN))
         .expect(403);
+    });
+  });
+
+  describe('GET /tickets/stats', () => {
+    it('is not captured by the :id route and sums the divisi of the session', async () => {
+      const response = await request(server())
+        .get('/tickets/stats')
+        .set('Cookie', await sessionCookieFor(STAFF_IT))
+        .expect(200);
+
+      expect(response.body).toEqual({
+        total: 10,
+        incoming: 6,
+        outgoing: 4,
+        selesai: 1,
+      });
+      expect(queries.countOutgoingCalls[0][0]).toEqual({
+        fromDivisi: Divisi.IT,
+      });
+      expect(queries.countIncomingCalls[0][0]).toEqual({
+        viewer: { role: Role.TEAM_MAIN_OFFICE, divisi: Divisi.IT },
+      });
+    });
+
+    it('ignores any scope the client tries to send', async () => {
+      await request(server())
+        .get('/tickets/stats?divisi=FINANCE&fromDivisi=FINANCE')
+        .set('Cookie', await sessionCookieFor(STAFF_IT))
+        .expect(200);
+
+      expect(queries.countOutgoingCalls[0][0]).toEqual({
+        fromDivisi: Divisi.IT,
+      });
+    });
+
+    it('refuses the superadmin', async () => {
+      const response = await request(server())
+        .get('/tickets/stats')
+        .set('Cookie', await sessionCookieFor(SUPERADMIN));
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+      expect(queries.countOutgoingCalls).toHaveLength(0);
+    });
+  });
+
+  describe('GET /tickets/recent', () => {
+    it('is not captured by the :id route and returns list items for the session divisi', async () => {
+      queries.recent = [
+        {
+          id: 'IT-20261011-0001',
+          description: 'Printer lantai 2 tidak bisa mencetak',
+          stage: 'DIPROSES',
+          fromDivisi: Divisi.IT,
+          toDivisi: Divisi.FINANCE,
+          createdAt: new Date('2026-10-11T02:00:00Z'),
+          attachmentCount: 1,
+        },
+      ];
+
+      const response = await request(server())
+        .get('/tickets/recent')
+        .set('Cookie', await sessionCookieFor(MANAGER_IT))
+        .expect(200);
+
+      expect(response.body).toEqual([
+        {
+          id: 'IT-20261011-0001',
+          descriptionPreview: 'Printer lantai 2 tidak bisa mencetak',
+          stage: 'DIPROSES',
+          fromDivisi: 'IT',
+          toDivisi: 'FINANCE',
+          createdAt: '2026-10-11T02:00:00.000Z',
+          attachmentCount: 1,
+        },
+      ]);
+      expect(queries.listRecentCalls[0]).toEqual([
+        { fromDivisi: Divisi.IT },
+        { viewer: { role: Role.MANAGER_MAIN_OFFICE, divisi: Divisi.IT } },
+        7,
+      ]);
+    });
+
+    it('refuses the superadmin', async () => {
+      await request(server())
+        .get('/tickets/recent')
+        .set('Cookie', await sessionCookieFor(SUPERADMIN))
+        .expect(403);
+      expect(queries.listRecentCalls).toHaveLength(0);
     });
   });
 
@@ -563,6 +676,8 @@ describe('Tickets read and stage routes (integration)', () => {
     it.each([
       ['a list', '/tickets/outgoing', 200],
       ['the action counts', '/tickets/action-counts', 200],
+      ['the stats', '/tickets/stats', 200],
+      ['the recent tickets', '/tickets/recent', 200],
       ['a missing ticket', '/tickets/IT-2026-9999', 404],
       ['a malformed id', '/tickets/IT_2026', 400],
     ])('is private, no-store for %s', async (_label, path, status) => {
