@@ -15,12 +15,13 @@ interface StatusBadgeProps {
   stage: TicketStage;
   fromDivisi: Divisi;
   toDivisi: Divisi;
+  wrap?: boolean;
 }
 
-export function StatusBadge({ stage, fromDivisi, toDivisi }: StatusBadgeProps) {
+export function StatusBadge({ stage, fromDivisi, toDivisi, wrap = false }: StatusBadgeProps) {
   return (
     <span
-      className={`inline-flex animate-pop-in items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${STAGE_STYLE[stage]}`}
+      className={`inline-flex animate-pop-in items-center gap-1.5 px-3 py-1 text-xs font-semibold ${wrap ? "rounded-xl text-left leading-snug" : "rounded-full whitespace-nowrap"} ${STAGE_STYLE[stage]}`}
     >
       <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-current" />
       {stageLabel({ stage, fromDivisi, toDivisi })}

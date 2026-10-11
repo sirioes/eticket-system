@@ -68,3 +68,7 @@ export function advanceTicketStage(id: string, action: StageAction): Promise<Adv
 export function downloadOutgoingExport(filters: TicketListFilters): Promise<DownloadedFile> {
   return api.download(withQuery("/tickets/outgoing/export", filters));
 }
+
+export function ticketDetailHref(id: string): string {
+  return `/ticket/${encodeURIComponent(id)}`;
+}
