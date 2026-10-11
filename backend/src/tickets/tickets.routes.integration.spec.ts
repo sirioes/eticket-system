@@ -13,6 +13,7 @@ import { Divisi } from '../common/enums/divisi.enum';
 import { Role } from '../common/enums/role.enum';
 import {
   TicketDetail,
+  TicketExportRow,
   TicketPage,
   TicketQueryRepository,
 } from './application/ports/ticket-query.repository';
@@ -22,6 +23,10 @@ import {
   NOT_AUTHORIZED_ACTOR_MESSAGE,
   STAGE_CHANGED_MESSAGE,
 } from './application/use-cases/advance-ticket-stage.use-case';
+import {
+  EXPORT_ROW_LIMIT,
+  EXPORT_TOO_LARGE_MESSAGE,
+} from './application/use-cases/export-outgoing-tickets.use-case';
 import { TICKET_NOT_FOUND_MESSAGE } from './attachments/application/use-cases/upload-attachment.use-case';
 
 jest.mock('../prisma/prisma.service', () => ({
@@ -99,8 +104,12 @@ class FakeTicketQueryRepository extends TicketQueryRepository {
     return 3;
   }
 
-  async findOutgoingForExport() {
-    return [];
+  exportRows: TicketExportRow[] = [];
+  readonly exportCalls: unknown[][] = [];
+
+  async findOutgoingForExport(...args: unknown[]) {
+    this.exportCalls.push(args);
+    return this.exportRows;
   }
 }
 
@@ -586,6 +595,169 @@ describe('Tickets read and stage routes (integration)', () => {
 
       expect(response.status).toBe(409);
       expect(response.headers['cache-control']).toBe(NO_STORE);
+    });
+  });
+
+  describe('GET /tickets/outgoing/export', () => {
+    const XLSX_TYPE =
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    const exportAs = async (
+      fullName: string,
+      query = '',
+      headers: Record<string, string> = {},
+    ) => {
+      const cookie = await sessionCookieFor(fullName);
+      let call = request(server())
+        .get(`/tickets/outgoing/export${query}`)
+        .set('Cookie', cookie);
+      for (const [name, value] of Object.entries(headers)) {
+        call = call.set(name, value);
+      }
+      return call.buffer(true).parse((response, done) => {
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk: Buffer) => chunks.push(chunk));
+        response.on('end', () => done(null, Buffer.concat(chunks)));
+      });
+    };
+
+    beforeEach(() => {
+      queries.exportRows = [
+        {
+          id: 'IT-2026-0001',
+          fromDivisi: Divisi.IT,
+          toDivisi: Divisi.TAX,
+          processedAt: new Date('2026-10-09T02:00:00Z'),
+          completedAt: null,
+        },
+      ];
+    });
+
+    it('downloads an xlsx file with safe headers', async () => {
+      const response = await exportAs(STAFF_IT, '', {
+        'Sec-Fetch-Site': 'same-origin',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe(XLSX_TYPE);
+      expect(response.headers['content-disposition']).toMatch(
+        /^attachment; filename="pengaduan-keluar-IT-\d{8}-\d{4}\.xlsx"/,
+      );
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['cache-control']).toBe(NO_STORE);
+      expect(response.headers['content-security-policy']).toBe(
+        "default-src 'none'; sandbox",
+      );
+      expect((response.body as Buffer).subarray(0, 2).toString()).toBe('PK');
+    });
+
+    it('scopes the export to the divisi of the session with the active filters', async () => {
+      await exportAs(
+        MANAGER_IT,
+        '?status=SELESAI&divisi=TAX&search=IT-2026&dateFrom=2026-10-01&dateTo=2026-10-09',
+      ).then((response) => expect(response.status).toBe(200));
+
+      expect(queries.exportCalls).toHaveLength(1);
+      const [scope, filter, limit] = queries.exportCalls[0];
+      expect(scope).toEqual({ fromDivisi: Divisi.IT });
+      expect(filter).toMatchObject({
+        stage: 'SELESAI',
+        counterpartDivisi: Divisi.TAX,
+        search: 'IT-2026',
+      });
+      expect(limit).toBe(EXPORT_ROW_LIMIT + 1);
+    });
+
+    it('is not captured by the :id route', async () => {
+      const response = await exportAs(STAFF_IT);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe(XLSX_TYPE);
+    });
+
+    it.each(['cross-site', 'same-site'])(
+      'refuses a %s download before touching data',
+      async (site) => {
+        const response = await request(server())
+          .get('/tickets/outgoing/export')
+          .set('Cookie', await sessionCookieFor(STAFF_IT))
+          .set('Sec-Fetch-Site', site);
+
+        expect(response.status).toBe(403);
+        expect(response.body.message).toBe(CROSS_SITE_MESSAGE);
+        expect(queries.exportCalls).toHaveLength(0);
+      },
+    );
+
+    it('rejects a request without a session', async () => {
+      await request(server()).get('/tickets/outgoing/export').expect(401);
+      expect(queries.exportCalls).toHaveLength(0);
+    });
+
+    it('refuses the superadmin', async () => {
+      const response = await request(server())
+        .get('/tickets/outgoing/export')
+        .set('Cookie', await sessionCookieFor(SUPERADMIN));
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+    });
+
+    it.each([
+      'page=1',
+      'limit=100',
+      'fromDivisi=FINANCE',
+      'search=a%25b',
+      'status=BUKAN_STATUS',
+      'dateTo=2026-02-30',
+    ])('rejects the query %s with 400', async (queryString) => {
+      const response = await request(server())
+        .get(`/tickets/outgoing/export?${queryString}`)
+        .set('Cookie', await sessionCookieFor(STAFF_IT));
+
+      expect(response.status).toBe(400);
+      expect(queries.exportCalls).toHaveLength(0);
+    });
+
+    it('answers 422 instead of a truncated file when there are too many rows', async () => {
+      queries.exportRows = Array.from(
+        { length: EXPORT_ROW_LIMIT + 1 },
+        (_, index) => ({
+          id: `IT-${index}`,
+          fromDivisi: Divisi.IT,
+          toDivisi: Divisi.TAX,
+          processedAt: null,
+          completedAt: null,
+        }),
+      );
+
+      const response = await request(server())
+        .get('/tickets/outgoing/export')
+        .set('Cookie', await sessionCookieFor(STAFF_IT));
+
+      expect(response.status).toBe(422);
+      expect(response.body.message).toBe(EXPORT_TOO_LARGE_MESSAGE);
+      expect(response.headers['content-disposition']).toBeUndefined();
+    });
+
+    it('limits exports per account more strictly than reads', async () => {
+      const busy = await sessionCookieFor(STAFF_IT);
+      const colleague = await sessionCookieFor(STAFF_FINANCE);
+
+      const statuses: number[] = [];
+      for (let i = 0; i < 6; i += 1) {
+        const response = await request(server())
+          .get('/tickets/outgoing/export')
+          .set('Cookie', busy);
+        statuses.push(response.status);
+      }
+
+      expect(statuses.slice(0, 5)).toEqual([200, 200, 200, 200, 200]);
+      expect(statuses[5]).toBe(429);
+      await request(server())
+        .get('/tickets/outgoing/export')
+        .set('Cookie', colleague)
+        .expect(200);
     });
   });
 

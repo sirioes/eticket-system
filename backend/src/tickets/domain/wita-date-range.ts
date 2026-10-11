@@ -28,3 +28,7 @@ export function startOfNextWitaDay(date: string): Date | null {
   const start = startOfWitaDay(date);
   return start === null ? null : new Date(start.getTime() + DAY_MS);
 }
+
+export function toWitaWallClock(date: Date): Date {
+  return new Date(date.getTime() + WITA_OFFSET_MS);
+}

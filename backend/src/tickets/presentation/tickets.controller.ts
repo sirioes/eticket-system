@@ -2,10 +2,13 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Patch,
   Post,
   Query,
+  StreamableFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -16,7 +19,9 @@ import {
   Roles,
 } from '../../auth/presentation/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
+import { SameOriginGuard } from '../../common/guards/same-origin.guard';
 import { NoStoreInterceptor } from '../../common/interceptors/no-store.interceptor';
+import { attachmentDisposition } from '../attachments/presentation/content-disposition';
 import {
   CreatedTicket,
   CreateTicketUseCase,
@@ -25,6 +30,7 @@ import {
   ActionCountsView,
   GetActionCountsUseCase,
 } from '../application/use-cases/get-action-counts.use-case';
+import { ExportOutgoingTicketsUseCase } from '../application/use-cases/export-outgoing-tickets.use-case';
 import {
   GetTicketByIdUseCase,
   TicketDetailView,
@@ -39,8 +45,13 @@ import { TicketListView } from '../application/use-cases/ticket-list-query';
 import { AdvanceTicketStageDto } from './dto/advance-ticket-stage.dto';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ListTicketsQueryDto } from './dto/list-tickets-query.dto';
+import { TicketFilterQueryDto } from './dto/ticket-filter-query.dto';
 import { TicketIdParamDto } from './dto/ticket-id-param.dto';
-import { STAGE_ACTION_THROTTLE } from './tickets.config';
+import {
+  EXPORT_THROTTLE,
+  STAGE_ACTION_THROTTLE,
+  XLSX_CONTENT_TYPE,
+} from './tickets.config';
 
 const DIVISI_MEMBER_ROLES = [
   Role.TEAM_MAIN_OFFICE,
@@ -59,6 +70,7 @@ export class TicketsController {
     private readonly getActionCounts: GetActionCountsUseCase,
     private readonly getTicketById: GetTicketByIdUseCase,
     private readonly advanceTicketStage: AdvanceTicketStageUseCase,
+    private readonly exportOutgoingTickets: ExportOutgoingTicketsUseCase,
   ) {}
 
   @Roles(...DIVISI_MEMBER_ROLES)
@@ -81,6 +93,23 @@ export class TicketsController {
     @Query() query: ListTicketsQueryDto,
   ): Promise<TicketListView> {
     return this.listOutgoingTickets.execute({ user, ...query });
+  }
+
+  @Roles(...DIVISI_MEMBER_ROLES)
+  @Throttle(EXPORT_THROTTLE)
+  @UseGuards(SameOriginGuard)
+  @Get('outgoing/export')
+  @Header('Content-Security-Policy', "default-src 'none'; sandbox")
+  async exportOutgoing(
+    @CurrentUser() user: AuthUser,
+    @Query() query: TicketFilterQueryDto,
+  ): Promise<StreamableFile> {
+    const file = await this.exportOutgoingTickets.execute({ user, ...query });
+    return new StreamableFile(file.content, {
+      type: XLSX_CONTENT_TYPE,
+      length: file.content.length,
+      disposition: attachmentDisposition(file.fileName),
+    });
   }
 
   @Roles(...DIVISI_MEMBER_ROLES)

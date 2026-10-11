@@ -1,4 +1,8 @@
-import { startOfNextWitaDay, startOfWitaDay } from './wita-date-range';
+import {
+  startOfNextWitaDay,
+  startOfWitaDay,
+  toWitaWallClock,
+} from './wita-date-range';
 
 describe('startOfWitaDay', () => {
   it('mengubah 00:00 WITA menjadi 16:00 UTC hari sebelumnya', () => {
@@ -63,5 +67,25 @@ describe('startOfNextWitaDay', () => {
 
   it('mengembalikan null untuk tanggal tidak valid', () => {
     expect(startOfNextWitaDay('2026-02-30')).toBeNull();
+  });
+});
+
+describe('toWitaWallClock', () => {
+  it('menggeser waktu 8 jam supaya jam UTC-nya sama dengan jam dinding WITA', () => {
+    expect(toWitaWallClock(new Date('2026-10-08T02:30:00.000Z'))).toEqual(
+      new Date('2026-10-08T10:30:00.000Z'),
+    );
+  });
+
+  it('melewati pergantian hari', () => {
+    expect(toWitaWallClock(new Date('2026-12-31T16:00:00.000Z'))).toEqual(
+      new Date('2027-01-01T00:00:00.000Z'),
+    );
+  });
+
+  it('tidak mengubah tanggal aslinya', () => {
+    const original = new Date('2026-10-08T02:30:00.000Z');
+    toWitaWallClock(original);
+    expect(original.toISOString()).toBe('2026-10-08T02:30:00.000Z');
   });
 });
