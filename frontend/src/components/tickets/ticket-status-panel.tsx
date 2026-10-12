@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/components/layout/user-context";
 import { refreshActionCounts } from "@/components/layout/use-action-counts";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { PRIMARY_BUTTON_CLASS } from "@/components/ui/button-class";
@@ -81,6 +82,7 @@ interface TicketStatusPanelProps {
 
 export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatusPanelProps) {
   const router = useRouter();
+  const user = useUser();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState<StageAction | null>(null);
   const [busy, setBusy] = useState(false);
@@ -155,7 +157,7 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
         )}
       </div>
 
-      {actions.length === 0 && !terminal && !notice && (
+      {actions.length === 0 && !terminal && !notice && user.role !== "SUPERADMIN" && (
         <p className="text-sm text-ink/70">Tidak ada tindakan yang perlu kamu lakukan di tahap ini.</p>
       )}
 

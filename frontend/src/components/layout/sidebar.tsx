@@ -45,6 +45,12 @@ function badgeText(count: number): string {
   return count > 99 ? "99+" : String(count);
 }
 
+const ALL_TICKETS_ITEM: NavItem = {
+  href: "/semua-pengaduan",
+  label: "Semua Pengaduan",
+  icon: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+};
+
 const USERS_ITEM: NavItem = {
   href: "/kelola-akun",
   label: "Kelola Akun",
@@ -126,7 +132,7 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
         { ...OUTGOING_ITEM, badge: counts.outgoing },
         { ...INCOMING_ITEM, badge: counts.incoming },
       ]
-    : [...NAV_ITEMS, USERS_ITEM];
+    : [...NAV_ITEMS, ALL_TICKETS_ITEM, USERS_ITEM];
 
   useEffect(() => {
     if (!open) return;
