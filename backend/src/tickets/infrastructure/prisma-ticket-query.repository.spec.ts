@@ -2,7 +2,11 @@ import { Divisi } from '../../common/enums/divisi.enum';
 import { Role } from '../../common/enums/role.enum';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PrismaTicketQueryRepository } from './prisma-ticket-query.repository';
-import { buildIncomingWhere, buildOutgoingWhere } from './ticket-list-where';
+import {
+  buildAllWhere,
+  buildIncomingWhere,
+  buildOutgoingWhere,
+} from './ticket-list-where';
 
 describe('PrismaTicketQueryRepository', () => {
   const ticketDelegate = {
@@ -186,6 +190,28 @@ describe('PrismaTicketQueryRepository', () => {
         expect.objectContaining({ where, skip: 0, take: 10 }),
       );
       expect(ticketDelegate.count).toHaveBeenCalledWith({ where });
+    });
+  });
+
+  describe('listAll', () => {
+    it('memakai where tanpa batas divisi dan satu transaksi', async () => {
+      ticketDelegate.findMany.mockResolvedValue([]);
+      ticketDelegate.count.mockResolvedValue(0);
+      const filter = { counterpartDivisi: Divisi.TAX };
+
+      await repository.listAll(filter, { page: 2, limit: 10 });
+
+      const where = buildAllWhere(filter);
+      expect(ticketDelegate.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where,
+          skip: 10,
+          take: 10,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        }),
+      );
+      expect(ticketDelegate.count).toHaveBeenCalledWith({ where });
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     });
   });
 

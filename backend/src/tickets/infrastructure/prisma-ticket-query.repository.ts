@@ -14,7 +14,11 @@ import {
   TicketQueryRepository,
 } from '../application/ports/ticket-query.repository';
 import type { VisibleTicket } from '../domain/ticket-visibility';
-import { buildIncomingWhere, buildOutgoingWhere } from './ticket-list-where';
+import {
+  buildAllWhere,
+  buildIncomingWhere,
+  buildOutgoingWhere,
+} from './ticket-list-where';
 
 const NEWEST_FIRST = [{ createdAt: 'desc' }, { id: 'desc' }] as const;
 
@@ -103,6 +107,13 @@ export class PrismaTicketQueryRepository implements TicketQueryRepository {
     pagination: Pagination,
   ): Promise<TicketPage> {
     return this.findPage(buildIncomingWhere(scope, filter), pagination);
+  }
+
+  listAll(
+    filter: TicketListFilter,
+    pagination: Pagination,
+  ): Promise<TicketPage> {
+    return this.findPage(buildAllWhere(filter), pagination);
   }
 
   countOutgoingInStages(

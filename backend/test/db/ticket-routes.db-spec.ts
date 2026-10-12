@@ -34,6 +34,7 @@ describe('Ticket routes on MySQL', () => {
     ['Manager IT DB02', Role.MANAGER_MAIN_OFFICE, Divisi.IT],
     ['Staf Tax DB03', Role.TEAM_MAIN_OFFICE, Divisi.TAX],
     ['Manager Tax DB04', Role.MANAGER_MAIN_OFFICE, Divisi.TAX],
+    ['Super Admin DB05', Role.SUPERADMIN, null],
   ] as const;
 
   const server = () => app.getHttpServer();
@@ -167,7 +168,9 @@ describe('Ticket routes on MySQL', () => {
 
     expect(statuses).toEqual([200, 409]);
     await expect(
-      prisma.ticketStageLog.count({ where: { ticketId: ITEM, action: 'TERIMA' } }),
+      prisma.ticketStageLog.count({
+        where: { ticketId: ITEM, action: 'TERIMA' },
+      }),
     ).resolves.toBe(1);
     await expect(stageInDb()).resolves.toBe('MENUNGGU_MANAGER_TUJUAN');
   });
@@ -182,9 +185,7 @@ describe('Ticket routes on MySQL', () => {
 
     expect(
       responses.map((response) => response.status).sort((a, b) => a - b),
-    ).toEqual([
-      200, 409,
-    ]);
+    ).toEqual([200, 409]);
     const winner = responses.find((response) => response.status === 200);
     await expect(stageInDb()).resolves.toBe(winner?.body.stage);
   });
@@ -222,5 +223,47 @@ describe('Ticket routes on MySQL', () => {
 
     expect(response.status).toBe(403);
     await expect(stageInDb()).resolves.toBe('MENUNGGU_MANAGER_ASAL');
+  });
+
+  describe('superadmin all-tickets view', () => {
+    it('lists a ticket of an unrelated divisi and opens its detail without any action', async () => {
+      await seedItTicket();
+
+      const list = await request(server())
+        .get('/tickets/all')
+        .set('Cookie', as('Super Admin DB05'))
+        .expect(200);
+      expect(list.body.items.map((item: { id: string }) => item.id)).toEqual([
+        ITEM,
+      ]);
+      expect(list.body.total).toBe(1);
+
+      const detail = await request(server())
+        .get(`/tickets/${ITEM}`)
+        .set('Cookie', as('Super Admin DB05'))
+        .expect(200);
+      expect(detail.body.availableActions).toEqual([]);
+      expect(detail.body.canUploadAttachment).toBe(false);
+    });
+
+    it('cannot change the stage of a ticket', async () => {
+      await seedItTicket();
+
+      await patchStage('Super Admin DB05', 'TERIMA').expect(403);
+
+      await expect(stageInDb()).resolves.toBe('MENUNGGU_MANAGER_ASAL');
+    });
+
+    it.each([
+      'Staf IT DB01',
+      'Manager IT DB02',
+      'Staf Tax DB03',
+      'Manager Tax DB04',
+    ])('refuses %s', async (fullName) => {
+      await request(server())
+        .get('/tickets/all')
+        .set('Cookie', as(fullName))
+        .expect(403);
+    });
   });
 });

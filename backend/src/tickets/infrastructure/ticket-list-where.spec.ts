@@ -2,7 +2,11 @@ import { Divisi } from '../../common/enums/divisi.enum';
 import { Role } from '../../common/enums/role.enum';
 import { TicketStage } from '../../generated/prisma/client';
 import { canViewTicket } from '../domain/ticket-visibility';
-import { buildIncomingWhere, buildOutgoingWhere } from './ticket-list-where';
+import {
+  buildAllWhere,
+  buildIncomingWhere,
+  buildOutgoingWhere,
+} from './ticket-list-where';
 
 interface Row {
   readonly toDivisi: Divisi;
@@ -84,11 +88,14 @@ describe('buildOutgoingWhere', () => {
     ['\\', '\\\\'],
     ['IT_20%26', 'IT\\_20\\%26'],
     ['IT-2026', 'IT-2026'],
-  ])('meng-escape karakter khusus LIKE pada pencarian %p', (search, escaped) => {
-    expect(buildOutgoingWhere(scope, { search }).AND).toContainEqual({
-      id: { contains: escaped },
-    });
-  });
+  ])(
+    'meng-escape karakter khusus LIKE pada pencarian %p',
+    (search, escaped) => {
+      expect(buildOutgoingWhere(scope, { search }).AND).toContainEqual({
+        id: { contains: escaped },
+      });
+    },
+  );
 
   it('mendukung rentang tanggal dengan satu sisi saja', () => {
     const createdFrom = new Date('2026-09-30T16:00:00Z');
@@ -207,6 +214,38 @@ describe('buildIncomingWhere', () => {
           { fromDivisi: Divisi.IT, ...row },
         ),
       );
+    });
+  });
+});
+
+describe('buildAllWhere', () => {
+  it('tidak membatasi divisi maupun tahap kalau tidak ada filter', () => {
+    expect(buildAllWhere({})).toEqual({ AND: [] });
+  });
+
+  it('mencocokkan filter divisi pada divisi asal atau divisi tujuan', () => {
+    expect(buildAllWhere({ counterpartDivisi: Divisi.LEGAL })).toEqual({
+      AND: [{ OR: [{ fromDivisi: Divisi.LEGAL }, { toDivisi: Divisi.LEGAL }] }],
+    });
+  });
+
+  it('menerapkan pencarian ID, status, dan rentang tanggal sekaligus', () => {
+    const createdFrom = new Date('2026-10-01T00:00:00Z');
+    const createdBefore = new Date('2026-10-08T00:00:00Z');
+
+    expect(
+      buildAllWhere({
+        search: 'IT_20%',
+        stage: 'DITOLAK',
+        createdFrom,
+        createdBefore,
+      }),
+    ).toEqual({
+      AND: [
+        { id: { contains: 'IT\\_20\\%' } },
+        { stage: 'DITOLAK' },
+        { createdAt: { gte: createdFrom, lt: createdBefore } },
+      ],
     });
   });
 });
