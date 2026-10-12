@@ -7,6 +7,7 @@ import { ExportOutgoingTicketsUseCase } from '../../src/tickets/application/use-
 import { GetRecentTicketsUseCase } from '../../src/tickets/application/use-cases/get-recent-tickets.use-case';
 import { GetTicketStatsUseCase } from '../../src/tickets/application/use-cases/get-ticket-stats.use-case';
 import { GetActionCountsUseCase } from '../../src/tickets/application/use-cases/get-action-counts.use-case';
+import { ListAllTicketsUseCase } from '../../src/tickets/application/use-cases/list-all-tickets.use-case';
 import { ListIncomingTicketsUseCase } from '../../src/tickets/application/use-cases/list-incoming-tickets.use-case';
 import { ListOutgoingTicketsUseCase } from '../../src/tickets/application/use-cases/list-outgoing-tickets.use-case';
 import { PrismaTicketQueryRepository } from '../../src/tickets/infrastructure/prisma-ticket-query.repository';
@@ -401,6 +402,83 @@ describe('PrismaTicketQueryRepository on MySQL', () => {
           completedAt: null,
         },
       ]);
+    });
+  });
+
+  describe('all tickets', () => {
+    const allIds = async (
+      filter: { divisi?: Divisi; status?: TicketStage; search?: string } = {},
+    ) => {
+      const view = await new ListAllTicketsUseCase(repository).execute({
+        ...PAGE,
+        ...filter,
+      });
+      return view.items.map((item) => item.id).sort();
+    };
+
+    beforeEach(async () => {
+      await seedFromIt('IT-ASAL', 'MENUNGGU_MANAGER_ASAL');
+      await seedFromIt('IT-TOLAK-ASAL', 'DITOLAK', {
+        rejectedAtStage: 'MENUNGGU_MANAGER_ASAL',
+      });
+      await seedFromIt('IT-SELESAI', 'SELESAI');
+      await seedTicket(prisma, {
+        id: 'TAX-LEGAL',
+        fromDivisi: Divisi.TAX,
+        toDivisi: Divisi.LEGAL,
+        createdById: taxStaff.id,
+      });
+    });
+
+    it('lists every ticket of every divisi in every stage, including those hidden from the destination', async () => {
+      await expect(allIds()).resolves.toEqual([
+        'IT-ASAL',
+        'IT-SELESAI',
+        'IT-TOLAK-ASAL',
+        'TAX-LEGAL',
+      ]);
+    });
+
+    it('matches the divisi filter on either the origin or the destination', async () => {
+      await expect(allIds({ divisi: Divisi.TAX })).resolves.toEqual([
+        'IT-ASAL',
+        'IT-SELESAI',
+        'IT-TOLAK-ASAL',
+        'TAX-LEGAL',
+      ]);
+      await expect(allIds({ divisi: Divisi.IT })).resolves.toEqual([
+        'IT-ASAL',
+        'IT-SELESAI',
+        'IT-TOLAK-ASAL',
+      ]);
+      await expect(allIds({ divisi: Divisi.LEGAL })).resolves.toEqual([
+        'TAX-LEGAL',
+      ]);
+      await expect(allIds({ divisi: Divisi.FINANCE })).resolves.toEqual([]);
+    });
+
+    it('combines the status filter and the ID search', async () => {
+      await expect(allIds({ status: 'DITOLAK' })).resolves.toEqual([
+        'IT-TOLAK-ASAL',
+      ]);
+      await expect(allIds({ search: 'IT-' })).resolves.toEqual([
+        'IT-ASAL',
+        'IT-SELESAI',
+        'IT-TOLAK-ASAL',
+      ]);
+      await expect(
+        allIds({ search: 'IT-', status: 'SELESAI' }),
+      ).resolves.toEqual(['IT-SELESAI']);
+    });
+
+    it('reports the total across pages', async () => {
+      const view = await new ListAllTicketsUseCase(repository).execute({
+        page: 2,
+        limit: 3,
+      });
+
+      expect(view).toMatchObject({ total: 4, totalPages: 2, page: 2 });
+      expect(view.items).toHaveLength(1);
     });
   });
 });

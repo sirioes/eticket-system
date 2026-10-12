@@ -1,4 +1,5 @@
 import { Prisma, TicketStage } from '../../generated/prisma/client';
+import { Divisi } from '../../common/enums/divisi.enum';
 import { Role } from '../../common/enums/role.enum';
 import type {
   IncomingScope,
@@ -20,9 +21,19 @@ const REJECTABLE_STAGES = ALL_STAGES.filter(
   (stage) => STAGE_TRANSITIONS[stage].TOLAK !== undefined,
 );
 
+function counterpartClause(
+  field: 'fromDivisi' | 'toDivisi' | 'either',
+  divisi: Divisi,
+): Prisma.TicketWhereInput {
+  if (field === 'either') {
+    return { OR: [{ fromDivisi: divisi }, { toDivisi: divisi }] };
+  }
+  return { [field]: divisi };
+}
+
 function filterClauses(
   filter: TicketListFilter,
-  counterpartField: 'fromDivisi' | 'toDivisi',
+  counterpartField: 'fromDivisi' | 'toDivisi' | 'either',
 ): Prisma.TicketWhereInput[] {
   const clauses: Prisma.TicketWhereInput[] = [];
 
@@ -33,11 +44,7 @@ function filterClauses(
     clauses.push({ stage: filter.stage });
   }
   if (filter.counterpartDivisi !== undefined) {
-    clauses.push(
-      counterpartField === 'toDivisi'
-        ? { toDivisi: filter.counterpartDivisi }
-        : { fromDivisi: filter.counterpartDivisi },
-    );
+    clauses.push(counterpartClause(counterpartField, filter.counterpartDivisi));
   }
   if (filter.createdFrom !== undefined || filter.createdBefore !== undefined) {
     clauses.push({
@@ -99,4 +106,10 @@ export function buildIncomingWhere(
       ...filterClauses(filter, 'fromDivisi'),
     ],
   };
+}
+
+export function buildAllWhere(
+  filter: TicketListFilter,
+): Prisma.TicketWhereInput {
+  return { AND: filterClauses(filter, 'either') };
 }

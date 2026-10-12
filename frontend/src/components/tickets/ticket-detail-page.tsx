@@ -24,6 +24,9 @@ type LoadState =
   | { status: "ready"; key: string; data: TicketDetail };
 
 function backLink(user: SessionUser, ticket: TicketDetail): { href: string; label: string } {
+  if (user.role === "SUPERADMIN") {
+    return { href: "/semua-pengaduan", label: "Semua Pengaduan" };
+  }
   if (user.divisi === ticket.fromDivisi) {
     return { href: "/daftar-pengaduan/keluar", label: "Pengaduan Keluar" };
   }

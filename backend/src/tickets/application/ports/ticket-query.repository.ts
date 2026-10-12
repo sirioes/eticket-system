@@ -94,6 +94,11 @@ export abstract class TicketQueryRepository {
     pagination: Pagination,
   ): Promise<TicketPage>;
 
+  abstract listAll(
+    filter: TicketListFilter,
+    pagination: Pagination,
+  ): Promise<TicketPage>;
+
   abstract countOutgoingInStages(
     fromDivisi: Divisi,
     stages: readonly TicketStage[],

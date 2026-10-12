@@ -11,6 +11,7 @@ import { GetActionCountsUseCase } from './application/use-cases/get-action-count
 import { GetRecentTicketsUseCase } from './application/use-cases/get-recent-tickets.use-case';
 import { GetTicketByIdUseCase } from './application/use-cases/get-ticket-by-id.use-case';
 import { GetTicketStatsUseCase } from './application/use-cases/get-ticket-stats.use-case';
+import { ListAllTicketsUseCase } from './application/use-cases/list-all-tickets.use-case';
 import { ListIncomingTicketsUseCase } from './application/use-cases/list-incoming-tickets.use-case';
 import { ListOutgoingTicketsUseCase } from './application/use-cases/list-outgoing-tickets.use-case';
 import { PrismaTicketQueryRepository } from './infrastructure/prisma-ticket-query.repository';
@@ -30,6 +31,7 @@ import { TicketsController } from './presentation/tickets.controller';
     CreateTicketUseCase,
     ListOutgoingTicketsUseCase,
     ListIncomingTicketsUseCase,
+    ListAllTicketsUseCase,
     GetActionCountsUseCase,
     GetTicketStatsUseCase,
     GetRecentTicketsUseCase,

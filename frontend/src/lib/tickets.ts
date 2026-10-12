@@ -61,6 +61,10 @@ export function listIncomingTickets(query: TicketListQuery): Promise<TicketList>
   return api.get<TicketList>(withQuery("/tickets/incoming", query));
 }
 
+export function listAllTickets(query: TicketListQuery): Promise<TicketList> {
+  return api.get<TicketList>(withQuery("/tickets/all", query));
+}
+
 export function getActionCounts(): Promise<ActionCounts> {
   return api.get<ActionCounts>("/tickets/action-counts");
 }

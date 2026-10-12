@@ -78,6 +78,7 @@ class FakeTicketQueryRepository extends TicketQueryRepository {
   detail: TicketDetail | null = null;
   readonly listOutgoingCalls: unknown[][] = [];
   readonly listIncomingCalls: unknown[][] = [];
+  readonly listAllCalls: unknown[][] = [];
 
   async findDetailById() {
     return this.detail;
@@ -94,6 +95,11 @@ class FakeTicketQueryRepository extends TicketQueryRepository {
 
   async listIncoming(...args: unknown[]) {
     this.listIncomingCalls.push(args);
+    return EMPTY_PAGE;
+  }
+
+  async listAll(...args: unknown[]) {
+    this.listAllCalls.push(args);
     return EMPTY_PAGE;
   }
 
@@ -238,6 +244,7 @@ describe('Tickets read and stage routes (integration)', () => {
     it.each([
       ['GET', '/tickets/outgoing'],
       ['GET', '/tickets/incoming'],
+      ['GET', '/tickets/all'],
       ['GET', '/tickets/action-counts'],
       ['GET', '/tickets/stats'],
       ['GET', '/tickets/recent'],
@@ -331,6 +338,67 @@ describe('Tickets read and stage routes (integration)', () => {
 
       expect(response.status).toBe(403);
       expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+    });
+  });
+
+  describe('GET /tickets/all', () => {
+    it('is not captured by the :id route and lists without any divisi scope', async () => {
+      const response = await request(server())
+        .get(
+          '/tickets/all?page=2&limit=5&search=IT-2026&status=DITOLAK&divisi=TAX',
+        )
+        .set('Cookie', await sessionCookieFor(SUPERADMIN))
+        .expect(200);
+
+      expect(response.body).toEqual({
+        items: [],
+        total: 0,
+        page: 2,
+        limit: 5,
+        totalPages: 0,
+      });
+      expect(queries.listAllCalls).toHaveLength(1);
+      const [filter, pagination] = queries.listAllCalls[0];
+      expect(filter).toEqual({
+        search: 'IT-2026',
+        stage: 'DITOLAK',
+        counterpartDivisi: Divisi.TAX,
+      });
+      expect(pagination).toEqual({ page: 2, limit: 5 });
+      expect(response.headers['cache-control']).toBe(NO_STORE);
+    });
+
+    it.each([
+      ['staff', STAFF_IT],
+      ['manager', MANAGER_IT],
+      ['finance staff', STAFF_FINANCE],
+    ])('refuses %s with 403', async (_label, fullName) => {
+      const response = await request(server())
+        .get('/tickets/all')
+        .set('Cookie', await sessionCookieFor(fullName));
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+      expect(queries.listAllCalls).toHaveLength(0);
+    });
+
+    it.each([
+      'page=0',
+      'page=1001',
+      'limit=101',
+      'search=a%25b',
+      'status=BUKAN_STATUS',
+      'divisi=BUKAN_DIVISI',
+      'dateFrom=2026-02-30',
+      'dateFrom=2026-10-05&dateTo=2026-10-01',
+      'fromDivisi=IT',
+    ])('rejects the query %s with 400', async (queryString) => {
+      const response = await request(server())
+        .get(`/tickets/all?${queryString}`)
+        .set('Cookie', await sessionCookieFor(SUPERADMIN));
+
+      expect(response.status).toBe(400);
+      expect(queries.listAllCalls).toHaveLength(0);
     });
   });
 
@@ -477,7 +545,30 @@ describe('Tickets read and stage routes (integration)', () => {
         .expect(200);
 
       expect(response.body.availableActions).toEqual([]);
+      expect(response.body.canUploadAttachment).toBe(false);
+      expect(response.body.isCreator).toBe(false);
     });
+
+    it.each([
+      'MENUNGGU_MANAGER_ASAL',
+      'MENUNGGU_MANAGER_TUJUAN',
+      'MENUNGGU_STAF_TUJUAN',
+      'DIPROSES',
+      'SELESAI',
+      'DITOLAK',
+    ] as const)(
+      'lets the superadmin read a ticket at stage %s',
+      async (stage) => {
+        queries.detail = ticketAt(stage, {
+          rejectedAtStage: stage === 'DITOLAK' ? 'MENUNGGU_MANAGER_ASAL' : null,
+        });
+
+        await request(server())
+          .get('/tickets/IT-2026-0001')
+          .set('Cookie', await sessionCookieFor(SUPERADMIN))
+          .expect(200);
+      },
+    );
 
     it('answers 404 (not 403) for a ticket the viewer may not see', async () => {
       queries.detail = ticketAt('MENUNGGU_MANAGER_ASAL');

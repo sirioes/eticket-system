@@ -3,9 +3,13 @@ import { AuthUser } from '../../../auth/domain/auth-user';
 import { Divisi } from '../../../common/enums/divisi.enum';
 import { Role } from '../../../common/enums/role.enum';
 import { TicketQueryRepository } from '../ports/ticket-query.repository';
+import { ListAllTicketsUseCase } from './list-all-tickets.use-case';
 import { ListIncomingTicketsUseCase } from './list-incoming-tickets.use-case';
 import { ListOutgoingTicketsUseCase } from './list-outgoing-tickets.use-case';
-import { USER_WITHOUT_DIVISI_MESSAGE } from './ticket-list-query';
+import {
+  INVALID_DATE_RANGE_MESSAGE,
+  USER_WITHOUT_DIVISI_MESSAGE,
+} from './ticket-list-query';
 
 const user = (role: Role, divisi: Divisi | null): AuthUser => ({
   id: 11,
@@ -123,5 +127,52 @@ describe('ListIncomingTicketsUseCase', () => {
       }),
     ).rejects.toThrow(new ForbiddenException(USER_WITHOUT_DIVISI_MESSAGE));
     expect(tickets.listIncoming).not.toHaveBeenCalled();
+  });
+});
+
+describe('ListAllTicketsUseCase', () => {
+  const tickets = { listAll: jest.fn() };
+  const useCase = new ListAllTicketsUseCase(
+    tickets as unknown as TicketQueryRepository,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    tickets.listAll.mockResolvedValue(emptyPage);
+  });
+
+  it('meneruskan filter tanpa batas divisi', async () => {
+    await useCase.execute({
+      page: 2,
+      limit: 25,
+      search: 'IT-2026',
+      status: 'SELESAI',
+      divisi: Divisi.LEGAL,
+    });
+
+    expect(tickets.listAll).toHaveBeenCalledWith(
+      { search: 'IT-2026', stage: 'SELESAI', counterpartDivisi: Divisi.LEGAL },
+      { page: 2, limit: 25 },
+    );
+  });
+
+  it('mengembalikan tampilan dengan halaman dan total halaman', async () => {
+    tickets.listAll.mockResolvedValue({ items: [], total: 31 });
+
+    await expect(
+      useCase.execute({ page: 1, limit: 10 }),
+    ).resolves.toMatchObject({ total: 31, page: 1, limit: 10, totalPages: 4 });
+  });
+
+  it('menolak rentang tanggal terbalik sebelum menyentuh data', async () => {
+    await expect(
+      useCase.execute({
+        page: 1,
+        limit: 10,
+        dateFrom: '2026-10-05',
+        dateTo: '2026-10-01',
+      }),
+    ).rejects.toThrow(INVALID_DATE_RANGE_MESSAGE);
+    expect(tickets.listAll).not.toHaveBeenCalled();
   });
 });

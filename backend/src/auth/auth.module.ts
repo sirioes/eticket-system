@@ -39,6 +39,6 @@ import { ChangePasswordUseCase } from './application/use-cases/change-password.u
     ValidateSessionUseCase,
     JwtStrategy,
   ],
-  exports: [UserRepository],
+  exports: [UserRepository, PasswordHasher],
 })
 export class AuthModule {}

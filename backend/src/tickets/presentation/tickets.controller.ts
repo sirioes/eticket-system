@@ -44,6 +44,7 @@ import {
   AdvancedTicket,
   AdvanceTicketStageUseCase,
 } from '../application/use-cases/advance-ticket-stage.use-case';
+import { ListAllTicketsUseCase } from '../application/use-cases/list-all-tickets.use-case';
 import { ListIncomingTicketsUseCase } from '../application/use-cases/list-incoming-tickets.use-case';
 import { ListOutgoingTicketsUseCase } from '../application/use-cases/list-outgoing-tickets.use-case';
 import {
@@ -75,6 +76,7 @@ export class TicketsController {
     private readonly createTicketUseCase: CreateTicketUseCase,
     private readonly listOutgoingTickets: ListOutgoingTicketsUseCase,
     private readonly listIncomingTickets: ListIncomingTicketsUseCase,
+    private readonly listAllTickets: ListAllTicketsUseCase,
     private readonly getActionCounts: GetActionCountsUseCase,
     private readonly getTicketStats: GetTicketStatsUseCase,
     private readonly getRecentTickets: GetRecentTicketsUseCase,
@@ -129,6 +131,12 @@ export class TicketsController {
     @Query() query: ListTicketsQueryDto,
   ): Promise<TicketListView> {
     return this.listIncomingTickets.execute({ user, ...query });
+  }
+
+  @Roles(Role.SUPERADMIN)
+  @Get('all')
+  listAll(@Query() query: ListTicketsQueryDto): Promise<TicketListView> {
+    return this.listAllTickets.execute(query);
   }
 
   @Roles(...DIVISI_MEMBER_ROLES)
