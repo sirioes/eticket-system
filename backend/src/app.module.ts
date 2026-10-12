@@ -10,6 +10,7 @@ import { RolesGuard } from './auth/presentation/guards/roles.guard';
 import { TicketsModule } from './tickets/tickets.module';
 import { FetchMetadataGuard } from './common/guards/fetch-metadata.guard';
 import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
     PrismaModule,
     AuthModule,
     TicketsModule,
+    UsersModule,
   ],
   controllers: [HealthController],
   providers: [

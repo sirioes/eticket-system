@@ -8,11 +8,13 @@ import { AccessTokenIssuer } from '../ports/access-token-issuer';
 import { PasswordHasher } from '../ports/password-hasher';
 import { UserRepository } from '../ports/user.repository';
 import {
-  ChangePasswordUseCase,
-  CURRENT_PASSWORD_INCORRECT_MESSAGE,
   PASSWORD_INVALID_CHARACTER_MESSAGE,
   PASSWORD_TOO_LONG_MESSAGE,
   PASSWORD_TOO_SHORT_MESSAGE,
+} from '../password-policy';
+import {
+  ChangePasswordUseCase,
+  CURRENT_PASSWORD_INCORRECT_MESSAGE,
   PASSWORD_UNCHANGED_MESSAGE,
 } from './change-password.use-case';
 

@@ -4,7 +4,7 @@ import { UserRepository } from '../application/ports/user.repository';
 import { AuthUser, UserCredentials } from '../domain/auth-user';
 import { toAuthUser, toUserCredentials } from './user.mapper';
 
-const AUTH_USER_SELECT = {
+export const AUTH_USER_SELECT = {
   id: true,
   fullName: true,
   role: true,
