@@ -11,6 +11,7 @@ export const DIVISI_LABEL: Record<Divisi, string> = {
   PROJECT: 'Project',
   LEGAL: 'Legal',
   SO: 'SO',
+  HR: 'HR',
 };
 
 export function formatDateWita(date: string | Date): string {
