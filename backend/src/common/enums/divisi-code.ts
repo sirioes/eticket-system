@@ -10,6 +10,7 @@ export const DIVISI_CODE: Record<Divisi, string> = {
   [Divisi.PROJECT]: 'PRJ',
   [Divisi.LEGAL]: 'LGL',
   [Divisi.SO]: 'SO',
+  [Divisi.HR]: 'HR',
 };
 
 export function toDivisiCode(divisi: Divisi): string {

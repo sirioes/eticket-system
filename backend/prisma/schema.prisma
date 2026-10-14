@@ -112,6 +112,7 @@ enum Divisi {
   PROJECT
   LEGAL
   SO
+  HR
 }
 
 enum TicketStage {

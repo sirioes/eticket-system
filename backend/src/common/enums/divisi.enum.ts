@@ -8,4 +8,5 @@ export enum Divisi {
   PROJECT = 'PROJECT',
   LEGAL = 'LEGAL',
   SO = 'SO',
+  HR = 'HR',
 }
