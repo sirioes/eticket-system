@@ -276,7 +276,7 @@ describe('Tickets (integration)', () => {
         ['a missing toDivisi', { description: DESCRIPTION }],
         ['a missing description', { toDivisi: Divisi.TAX }],
         ['a lowercase divisi', { toDivisi: 'tax', description: DESCRIPTION }],
-        ['an unknown divisi', { toDivisi: 'HR', description: DESCRIPTION }],
+        ['an unknown divisi', { toDivisi: 'UNKNOWN', description: DESCRIPTION }],
         ['a numeric description', { toDivisi: Divisi.TAX, description: 12345 }],
         [
           'an array description',
