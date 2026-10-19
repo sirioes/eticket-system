@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, logout } from "@/lib/session";
+import { useIdleLogout } from "@/lib/use-idle-logout";
 import type { SessionUser } from "@/types/auth.types";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
@@ -31,6 +32,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       active = false;
     };
   }, [router, attempt]);
+
+  useIdleLogout(() => {
+    if (!user) return;
+    logout()
+      .catch(() => undefined)
+      .finally(() => router.replace("/login?reason=expired"));
+  });
 
   if (!user) {
     return (
