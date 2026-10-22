@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { TicketExportWriter } from './application/ports/ticket-export-writer';
+import { TicketMessageRepository } from './application/ports/ticket-message.repository';
 import { TicketQueryRepository } from './application/ports/ticket-query.repository';
 import { TicketStageRepository } from './application/ports/ticket-stage.repository';
 import { TicketRepository } from './application/ports/ticket.repository';
@@ -11,10 +12,13 @@ import { GetActionCountsUseCase } from './application/use-cases/get-action-count
 import { GetRecentTicketsUseCase } from './application/use-cases/get-recent-tickets.use-case';
 import { GetTicketByIdUseCase } from './application/use-cases/get-ticket-by-id.use-case';
 import { GetTicketStatsUseCase } from './application/use-cases/get-ticket-stats.use-case';
+import { ListTicketMessagesUseCase } from './application/use-cases/list-ticket-messages.use-case';
+import { PostTicketCommentUseCase } from './application/use-cases/post-ticket-comment.use-case';
 import { ListAllTicketsUseCase } from './application/use-cases/list-all-tickets.use-case';
 import { ListIncomingTicketsUseCase } from './application/use-cases/list-incoming-tickets.use-case';
 import { ListOutgoingTicketsUseCase } from './application/use-cases/list-outgoing-tickets.use-case';
 import { PrismaTicketQueryRepository } from './infrastructure/prisma-ticket-query.repository';
+import { PrismaTicketMessageRepository } from './infrastructure/prisma-ticket-message.repository';
 import { PrismaTicketStageRepository } from './infrastructure/prisma-ticket-stage.repository';
 import { PrismaTicketRepository } from './infrastructure/prisma-ticket.repository';
 import { XlsxTicketExportWriter } from './infrastructure/xlsx-ticket-export-writer';
@@ -27,6 +31,10 @@ import { TicketsController } from './presentation/tickets.controller';
     { provide: TicketRepository, useClass: PrismaTicketRepository },
     { provide: TicketQueryRepository, useClass: PrismaTicketQueryRepository },
     { provide: TicketStageRepository, useClass: PrismaTicketStageRepository },
+    {
+      provide: TicketMessageRepository,
+      useClass: PrismaTicketMessageRepository,
+    },
     { provide: TicketExportWriter, useClass: XlsxTicketExportWriter },
     CreateTicketUseCase,
     ListOutgoingTicketsUseCase,
@@ -38,6 +46,8 @@ import { TicketsController } from './presentation/tickets.controller';
     GetTicketByIdUseCase,
     AdvanceTicketStageUseCase,
     ExportOutgoingTicketsUseCase,
+    ListTicketMessagesUseCase,
+    PostTicketCommentUseCase,
   ],
 })
 export class TicketsModule {}

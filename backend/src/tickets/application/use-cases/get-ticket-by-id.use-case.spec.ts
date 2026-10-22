@@ -283,4 +283,29 @@ describe('GetTicketByIdUseCase', () => {
       expect(view.canUploadAttachment).toBe(false);
     });
   });
+
+  describe('komentar', () => {
+    it.each([
+      ['manager asal', managerIt, true, true],
+      ['manager tujuan', managerTax, true, true],
+      ['superadmin', superadmin, true, false],
+      ['staf divisi asal', creator, false, false],
+      ['staf divisi tujuan', staffTax, false, false],
+    ] as [string, AuthUser, boolean, boolean][])(
+      'menetapkan canReadComments dan canComment untuk %s',
+      async (_label, actor, read, write) => {
+        const view = await get(actor, detail({ stage: 'DIPROSES' }));
+
+        expect(view.canReadComments).toBe(read);
+        expect(view.canComment).toBe(write);
+      },
+    );
+
+    it('menutup canComment pada tahap selesai tetapi tetap boleh membaca', async () => {
+      const view = await get(managerTax, detail({ stage: 'SELESAI' }));
+
+      expect(view.canReadComments).toBe(true);
+      expect(view.canComment).toBe(false);
+    });
+  });
 });

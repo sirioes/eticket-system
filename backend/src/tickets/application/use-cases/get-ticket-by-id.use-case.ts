@@ -13,6 +13,10 @@ import {
   STAGE_ACTIONS,
   StageAction,
 } from '../../domain/ticket-stage-flow';
+import {
+  canReadComments,
+  canWriteComments,
+} from '../../domain/ticket-message-rules';
 import { canViewTicket } from '../../domain/ticket-visibility';
 import {
   TicketAttachmentSummary,
@@ -51,6 +55,8 @@ export interface TicketDetailView {
   readonly isCreator: boolean;
   readonly availableActions: StageAction[];
   readonly canUploadAttachment: boolean;
+  readonly canReadComments: boolean;
+  readonly canComment: boolean;
 }
 
 @Injectable()
@@ -105,6 +111,8 @@ export class GetTicketByIdUseCase {
         isCreator &&
         canReceiveAttachments(ticket.stage) &&
         ticket.attachments.length < MAX_ATTACHMENTS_PER_TICKET,
+      canReadComments: canReadComments(user, ticket),
+      canComment: canWriteComments(user, ticket),
     };
   }
 }

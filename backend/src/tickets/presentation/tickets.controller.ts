@@ -44,6 +44,11 @@ import {
   AdvancedTicket,
   AdvanceTicketStageUseCase,
 } from '../application/use-cases/advance-ticket-stage.use-case';
+import {
+  ListTicketMessagesUseCase,
+  TicketMessageView,
+} from '../application/use-cases/list-ticket-messages.use-case';
+import { PostTicketCommentUseCase } from '../application/use-cases/post-ticket-comment.use-case';
 import { ListAllTicketsUseCase } from '../application/use-cases/list-all-tickets.use-case';
 import { ListIncomingTicketsUseCase } from '../application/use-cases/list-incoming-tickets.use-case';
 import { ListOutgoingTicketsUseCase } from '../application/use-cases/list-outgoing-tickets.use-case';
@@ -52,11 +57,13 @@ import {
   TicketListView,
 } from '../application/use-cases/ticket-list-query';
 import { AdvanceTicketStageDto } from './dto/advance-ticket-stage.dto';
+import { CreateTicketMessageDto } from './dto/create-ticket-message.dto';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ListTicketsQueryDto } from './dto/list-tickets-query.dto';
 import { TicketFilterQueryDto } from './dto/ticket-filter-query.dto';
 import { TicketIdParamDto } from './dto/ticket-id-param.dto';
 import {
+  COMMENT_THROTTLE,
   EXPORT_THROTTLE,
   STAGE_ACTION_THROTTLE,
   XLSX_CONTENT_TYPE,
@@ -83,6 +90,8 @@ export class TicketsController {
     private readonly getTicketById: GetTicketByIdUseCase,
     private readonly advanceTicketStage: AdvanceTicketStageUseCase,
     private readonly exportOutgoingTickets: ExportOutgoingTicketsUseCase,
+    private readonly listTicketMessages: ListTicketMessagesUseCase,
+    private readonly postTicketComment: PostTicketCommentUseCase,
   ) {}
 
   @Roles(...DIVISI_MEMBER_ROLES)
@@ -179,6 +188,31 @@ export class TicketsController {
       ticketId: params.id,
       action: dto.action,
       reason: dto.reason,
+    });
+  }
+
+  @AnyRole()
+  @Get(':id/messages')
+  messages(
+    @CurrentUser() user: AuthUser,
+    @Param() params: TicketIdParamDto,
+  ): Promise<TicketMessageView[]> {
+    return this.listTicketMessages.execute({ user, ticketId: params.id });
+  }
+
+  @AnyRole()
+  @Throttle(COMMENT_THROTTLE)
+  @UseGuards(SameOriginGuard)
+  @Post(':id/messages')
+  postMessage(
+    @CurrentUser() user: AuthUser,
+    @Param() params: TicketIdParamDto,
+    @Body() dto: CreateTicketMessageDto,
+  ): Promise<TicketMessageView> {
+    return this.postTicketComment.execute({
+      user,
+      ticketId: params.id,
+      body: dto.body,
     });
   }
 }
