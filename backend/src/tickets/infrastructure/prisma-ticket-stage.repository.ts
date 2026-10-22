@@ -33,7 +33,7 @@ export class PrismaTicketStageRepository implements TicketStageRepository {
         });
         if (count === 0) return false;
 
-        await tx.ticketStageLog.create({
+        const log = await tx.ticketStageLog.create({
           data: {
             ticketId: command.ticketId,
             action: command.action,
@@ -43,6 +43,19 @@ export class PrismaTicketStageRepository implements TicketStageRepository {
           },
           select: { id: true },
         });
+
+        if (command.reason !== null) {
+          await tx.ticketMessage.create({
+            data: {
+              ticketId: command.ticketId,
+              authorId: command.actorId,
+              kind: 'ALASAN',
+              body: command.reason,
+              stageLogId: log.id,
+            },
+            select: { id: true },
+          });
+        }
         return true;
       }, TRANSACTION_OPTIONS);
     } catch (error) {

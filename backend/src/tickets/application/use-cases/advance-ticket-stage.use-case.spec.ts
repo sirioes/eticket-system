@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -15,7 +16,11 @@ import { TicketStageRepository } from '../ports/ticket-stage.repository';
 import {
   ACTION_NOT_AVAILABLE_MESSAGE,
   AdvanceTicketStageUseCase,
+  COMPLETE_VIA_ENDPOINT_MESSAGE,
   NOT_AUTHORIZED_ACTOR_MESSAGE,
+  REASON_INVALID_CHARACTER_MESSAGE,
+  REASON_LENGTH_MESSAGE,
+  REASON_NOT_ALLOWED_MESSAGE,
   STAGE_CHANGED_MESSAGE,
 } from './advance-ticket-stage.use-case';
 
@@ -34,6 +39,8 @@ const managerTax = user(Role.MANAGER_MAIN_OFFICE, Divisi.TAX, 22);
 const staffTax = user(Role.TEAM_MAIN_OFFICE, Divisi.TAX, 23);
 const staffLegal = user(Role.TEAM_MAIN_OFFICE, Divisi.LEGAL, 31);
 const superadmin = user(Role.SUPERADMIN, null, 1);
+
+const REASON = 'Sudah sesuai dengan kebutuhan divisi';
 
 const ticket = (
   stage: TicketStage,
@@ -57,9 +64,15 @@ describe('AdvanceTicketStageUseCase', () => {
     actor: AuthUser,
     action: StageAction,
     found: VisibleTicket | null,
+    reason?: string,
   ) => {
     queries.findVisibilityById.mockResolvedValue(found);
-    return useCase.execute({ actor, ticketId: 'IT-20261008-001', action });
+    return useCase.execute({
+      actor,
+      ticketId: 'IT-20261008-001',
+      action,
+      reason,
+    });
   };
 
   beforeEach(() => {
@@ -104,11 +117,14 @@ describe('AdvanceTicketStageUseCase', () => {
         'MENUNGGU_STAF_TUJUAN',
         'DIPROSES',
       ],
-      ['staf tujuan menyelesaikan', staffTax, 'SELESAI', 'DIPROSES', 'SELESAI'],
     ] as [string, AuthUser, StageAction, TicketStage, TicketStage][])(
       '%s',
       async (_label, actor, action, from, to) => {
-        await expect(advance(actor, action, ticket(from))).resolves.toEqual({
+        const reason = action === 'PROSES' ? undefined : REASON;
+
+        await expect(
+          advance(actor, action, ticket(from), reason),
+        ).resolves.toEqual({
           id: 'IT-20261008-001',
           stage: to,
         });
@@ -119,6 +135,7 @@ describe('AdvanceTicketStageUseCase', () => {
           action,
           nextStage: to,
           actorId: actor.id,
+          reason: reason ?? null,
         });
       },
     );
@@ -244,6 +261,92 @@ describe('AdvanceTicketStageUseCase', () => {
         expect(stages.advanceStage).not.toHaveBeenCalled();
       },
     );
+  });
+
+  describe('alasan', () => {
+    const accept = (reason?: string) =>
+      advance(managerIt, 'TERIMA', ticket('MENUNGGU_MANAGER_ASAL'), reason);
+    const decline = (reason?: string) =>
+      advance(managerTax, 'TOLAK', ticket('MENUNGGU_MANAGER_TUJUAN'), reason);
+
+    it.each([
+      ['terima', accept],
+      ['tolak', decline],
+    ])('menjawab 400 kalau alasan %s kosong', async (_label, act) => {
+      await expect(act()).rejects.toThrow(
+        new BadRequestException(REASON_LENGTH_MESSAGE),
+      );
+      await expect(act('')).rejects.toThrow(
+        new BadRequestException(REASON_LENGTH_MESSAGE),
+      );
+      await expect(act('   \n\t  ')).rejects.toThrow(
+        new BadRequestException(REASON_LENGTH_MESSAGE),
+      );
+      expect(stages.advanceStage).not.toHaveBeenCalled();
+    });
+
+    it('menolak alasan 9 karakter dan menerima 10 karakter setelah trim', async () => {
+      await expect(accept('  123456789  ')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(accept('  1234567890  ')).resolves.toBeDefined();
+      expect(stages.advanceStage.mock.calls[0][0].reason).toBe('1234567890');
+    });
+
+    it('menolak alasan 501 karakter dan menerima 500 karakter', async () => {
+      await expect(accept('a'.repeat(501))).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(accept('a'.repeat(500))).resolves.toBeDefined();
+    });
+
+    it('menyeragamkan baris baru sebelum disimpan', async () => {
+      await accept('baris satu\r\nbaris dua');
+
+      expect(stages.advanceStage.mock.calls[0][0].reason).toBe(
+        'baris satu\nbaris dua',
+      );
+    });
+
+    it.each([
+      ['karakter kontrol', 'alasan\u0007 valid sekali'],
+      ['pengarah teks unicode', 'alasan\u202Evalid sekali'],
+      ['lebar nol', 'alasan\u200Bvalid sekali'],
+      ['surrogate tunggal', 'alasan valid \uD800 sekali'],
+    ])('menolak alasan berisi %s', async (_label, reason) => {
+      await expect(accept(reason)).rejects.toThrow(
+        new BadRequestException(REASON_INVALID_CHARACTER_MESSAGE),
+      );
+      expect(stages.advanceStage).not.toHaveBeenCalled();
+    });
+
+    it('menolak alasan pada aksi PROSES', async () => {
+      await expect(
+        advance(staffTax, 'PROSES', ticket('MENUNGGU_STAF_TUJUAN'), REASON),
+      ).rejects.toThrow(new BadRequestException(REASON_NOT_ALLOWED_MESSAGE));
+      expect(stages.advanceStage).not.toHaveBeenCalled();
+    });
+
+    it('memeriksa wewenang sebelum alasan', async () => {
+      await expect(
+        advance(staffIt, 'TERIMA', ticket('MENUNGGU_MANAGER_ASAL')),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('aksi selesai', () => {
+    it('ditolak di jalur PATCH dengan petunjuk endpoint selesai', async () => {
+      await expect(
+        advance(staffTax, 'SELESAI', ticket('DIPROSES')),
+      ).rejects.toThrow(new BadRequestException(COMPLETE_VIA_ENDPOINT_MESSAGE));
+      expect(stages.advanceStage).not.toHaveBeenCalled();
+    });
+
+    it('tetap menjawab 403 untuk pelaku yang tidak berwenang', async () => {
+      await expect(
+        advance(managerTax, 'SELESAI', ticket('DIPROSES')),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
   });
 
   describe('persaingan antar permintaan', () => {

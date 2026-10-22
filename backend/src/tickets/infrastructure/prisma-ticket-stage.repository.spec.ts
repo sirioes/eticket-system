@@ -15,6 +15,7 @@ const accept: AdvanceStageCommand = {
   action: 'TERIMA',
   nextStage: 'MENUNGGU_MANAGER_TUJUAN',
   actorId: 21,
+  reason: 'Sudah sesuai dengan kebutuhan divisi',
 };
 
 const reject: AdvanceStageCommand = {
@@ -28,6 +29,7 @@ describe('PrismaTicketStageRepository', () => {
   const tx = {
     ticket: { updateMany: jest.fn() },
     ticketStageLog: { create: jest.fn() },
+    ticketMessage: { create: jest.fn() },
   };
   const prisma = { $transaction: jest.fn() };
   const repository = new PrismaTicketStageRepository(
@@ -63,6 +65,43 @@ describe('PrismaTicketStageRepository', () => {
     });
   });
 
+  it('menyimpan alasan sebagai pesan ALASAN yang menempel pada log tahap', async () => {
+    tx.ticket.updateMany.mockResolvedValue({ count: 1 });
+    tx.ticketStageLog.create.mockResolvedValue({ id: 'log-1' });
+    tx.ticketMessage.create.mockResolvedValue({ id: 'msg-1' });
+
+    await expect(repository.advanceStage(accept)).resolves.toBe(true);
+
+    expect(tx.ticketMessage.create).toHaveBeenCalledWith({
+      data: {
+        ticketId: 'IT-20261008-001',
+        authorId: 21,
+        kind: 'ALASAN',
+        body: 'Sudah sesuai dengan kebutuhan divisi',
+        stageLogId: 'log-1',
+      },
+      select: { id: true },
+    });
+  });
+
+  it('tidak menulis pesan kalau tidak ada alasan', async () => {
+    tx.ticket.updateMany.mockResolvedValue({ count: 1 });
+    tx.ticketStageLog.create.mockResolvedValue({ id: 'log-1' });
+
+    await repository.advanceStage({ ...accept, reason: null });
+
+    expect(tx.ticketMessage.create).not.toHaveBeenCalled();
+  });
+
+  it('meneruskan kegagalan menulis pesan supaya transaksi dibatalkan', async () => {
+    const failure = new Error('gagal menulis pesan');
+    tx.ticket.updateMany.mockResolvedValue({ count: 1 });
+    tx.ticketStageLog.create.mockResolvedValue({ id: 'log-1' });
+    tx.ticketMessage.create.mockRejectedValue(failure);
+
+    await expect(repository.advanceStage(accept)).rejects.toBe(failure);
+  });
+
   it('menyimpan tahap dan pelaku penolakan saat TOLAK', async () => {
     tx.ticket.updateMany.mockResolvedValue({ count: 1 });
     tx.ticketStageLog.create.mockResolvedValue({ id: 'log-1' });
@@ -88,6 +127,7 @@ describe('PrismaTicketStageRepository', () => {
       expectedStage: 'DIPROSES',
       action: 'SELESAI',
       nextStage: 'SELESAI',
+      reason: null,
     });
 
     const { data } = tx.ticket.updateMany.mock.calls[0][0];
@@ -99,6 +139,7 @@ describe('PrismaTicketStageRepository', () => {
 
     await expect(repository.advanceStage(accept)).resolves.toBe(false);
     expect(tx.ticketStageLog.create).not.toHaveBeenCalled();
+    expect(tx.ticketMessage.create).not.toHaveBeenCalled();
   });
 
   it('mengembalikan false kalau log untuk tahap itu sudah ada (P2002)', async () => {

@@ -178,6 +178,7 @@ export class TicketsController {
       actor: user,
       ticketId: params.id,
       action: dto.action,
+      reason: dto.reason,
     });
   }
 }

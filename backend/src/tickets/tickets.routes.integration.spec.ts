@@ -21,7 +21,9 @@ import {
 import { TicketStageRepository } from './application/ports/ticket-stage.repository';
 import {
   ACTION_NOT_AVAILABLE_MESSAGE,
+  COMPLETE_VIA_ENDPOINT_MESSAGE,
   NOT_AUTHORIZED_ACTOR_MESSAGE,
+  REASON_NOT_ALLOWED_MESSAGE,
   STAGE_CHANGED_MESSAGE,
 } from './application/use-cases/advance-ticket-stage.use-case';
 import {
@@ -43,6 +45,8 @@ process.env.CORS_ORIGIN = 'https://eticket.example';
 const PASSWORD = 'rahasia-integrasi-123';
 
 const NO_STORE = 'private, no-store';
+
+const REASON = 'Sudah sesuai dengan kebutuhan divisi';
 
 const EMPTY_PAGE: TicketPage = { items: [], total: 0 };
 
@@ -253,7 +257,7 @@ describe('Tickets read and stage routes (integration)', () => {
     ])('rejects %s %s without a session', async (method, path) => {
       const response = await request(server())
         [method.toLowerCase() as 'get' | 'patch'](path)
-        .send(method === 'PATCH' ? { action: 'TERIMA' } : undefined);
+        .send(method === 'PATCH' ? { action: 'TERIMA', reason: REASON } : undefined);
 
       expect(response.status).toBe(401);
       expect(stages.commands).toHaveLength(0);
@@ -622,7 +626,7 @@ describe('Tickets read and stage routes (integration)', () => {
     it('advances the stage using only the action from the client', async () => {
       queries.detail = ticketAt('MENUNGGU_MANAGER_ASAL');
 
-      const response = await patchAs(MANAGER_IT, { action: 'TERIMA' });
+      const response = await patchAs(MANAGER_IT, { action: 'TERIMA', reason: REASON });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -636,8 +640,69 @@ describe('Tickets read and stage routes (integration)', () => {
           action: 'TERIMA',
           nextStage: 'MENUNGGU_MANAGER_TUJUAN',
           actorId: 2,
+          reason: REASON,
         },
       ]);
+    });
+
+    it('trims the reason before it reaches the repository', async () => {
+      queries.detail = ticketAt('MENUNGGU_MANAGER_ASAL');
+
+      await patchAs(MANAGER_IT, {
+        action: 'TERIMA',
+        reason: `  ${REASON}  `,
+      }).then((response) => expect(response.status).toBe(200));
+
+      expect(stages.commands).toMatchObject([{ reason: REASON }]);
+    });
+
+    it.each([
+      ['no reason', { action: 'TERIMA' }],
+      ['an empty reason', { action: 'TOLAK', reason: '' }],
+      ['a blank reason', { action: 'TERIMA', reason: '          ' }],
+      ['a too short reason', { action: 'TERIMA', reason: 'singkat' }],
+      ['a too long reason', { action: 'TERIMA', reason: 'a'.repeat(501) }],
+      ['a numeric reason', { action: 'TERIMA', reason: 1234567890 }],
+      ['an array reason', { action: 'TERIMA', reason: [REASON] }],
+    ])('answers 400 for %s on a decision', async (_label, body) => {
+      queries.detail = ticketAt('MENUNGGU_MANAGER_ASAL');
+
+      const response = await patchAs(MANAGER_IT, body);
+
+      expect(response.status).toBe(400);
+      expect(stages.commands).toHaveLength(0);
+    });
+
+    it('answers 400 when a reason comes with a staff action', async () => {
+      queries.detail = ticketAt('MENUNGGU_STAF_TUJUAN');
+
+      const response = await patchAs(STAFF_FINANCE, {
+        action: 'PROSES',
+        reason: REASON,
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe(REASON_NOT_ALLOWED_MESSAGE);
+      expect(stages.commands).toHaveLength(0);
+    });
+
+    it('lets the staff start processing without a reason', async () => {
+      queries.detail = ticketAt('MENUNGGU_STAF_TUJUAN');
+
+      const response = await patchAs(STAFF_FINANCE, { action: 'PROSES' });
+
+      expect(response.status).toBe(200);
+      expect(stages.commands).toMatchObject([{ action: 'PROSES', reason: null }]);
+    });
+
+    it('refuses to complete a ticket through the stage endpoint', async () => {
+      queries.detail = ticketAt('DIPROSES');
+
+      const response = await patchAs(STAFF_FINANCE, { action: 'SELESAI' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe(COMPLETE_VIA_ENDPOINT_MESSAGE);
+      expect(stages.commands).toHaveLength(0);
     });
 
     it.each([
@@ -671,7 +736,7 @@ describe('Tickets read and stage routes (integration)', () => {
 
       const response = await patchAs(
         MANAGER_IT,
-        { action: 'TERIMA' },
+        { action: 'TERIMA', reason: REASON },
         { 'Sec-Fetch-Site': 'cross-site' },
       );
 
@@ -685,7 +750,7 @@ describe('Tickets read and stage routes (integration)', () => {
 
       const response = await patchAs(
         MANAGER_IT,
-        { action: 'TERIMA' },
+        { action: 'TERIMA', reason: REASON },
         { 'Sec-Fetch-Site': 'same-site' },
       );
 
@@ -698,7 +763,7 @@ describe('Tickets read and stage routes (integration)', () => {
 
       await patchAs(
         MANAGER_IT,
-        { action: 'TERIMA' },
+        { action: 'TERIMA', reason: REASON },
         { 'Sec-Fetch-Site': 'same-origin' },
       ).then((response) => expect(response.status).toBe(200));
     });
@@ -706,7 +771,7 @@ describe('Tickets read and stage routes (integration)', () => {
     it('answers 403 when the viewer is not the actor of this stage', async () => {
       queries.detail = ticketAt('MENUNGGU_MANAGER_ASAL');
 
-      const response = await patchAs(STAFF_IT, { action: 'TERIMA' });
+      const response = await patchAs(STAFF_IT, { action: 'TERIMA', reason: REASON });
 
       expect(response.status).toBe(403);
       expect(response.body.message).toBe(NOT_AUTHORIZED_ACTOR_MESSAGE);
@@ -716,7 +781,7 @@ describe('Tickets read and stage routes (integration)', () => {
     it('answers 404 when the ticket is invisible to the caller', async () => {
       queries.detail = ticketAt('MENUNGGU_MANAGER_ASAL');
 
-      const response = await patchAs(STAFF_FINANCE, { action: 'TERIMA' });
+      const response = await patchAs(STAFF_FINANCE, { action: 'TERIMA', reason: REASON });
 
       expect(response.status).toBe(404);
       expect(stages.commands).toHaveLength(0);
@@ -725,7 +790,7 @@ describe('Tickets read and stage routes (integration)', () => {
     it('refuses the superadmin', async () => {
       queries.detail = ticketAt('MENUNGGU_MANAGER_ASAL');
 
-      const response = await patchAs(SUPERADMIN, { action: 'TERIMA' });
+      const response = await patchAs(SUPERADMIN, { action: 'TERIMA', reason: REASON });
 
       expect(response.status).toBe(403);
       expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
@@ -745,7 +810,7 @@ describe('Tickets read and stage routes (integration)', () => {
       queries.detail = ticketAt('MENUNGGU_MANAGER_ASAL');
       stages.result = false;
 
-      const response = await patchAs(MANAGER_IT, { action: 'TERIMA' });
+      const response = await patchAs(MANAGER_IT, { action: 'TERIMA', reason: REASON });
 
       expect(response.status).toBe(409);
       expect(response.body.message).toBe(STAGE_CHANGED_MESSAGE);
@@ -1001,7 +1066,7 @@ describe('Tickets read and stage routes (integration)', () => {
         const response = await request(server())
           .patch('/tickets/IT-2026-0001/stage')
           .set('Cookie', cookie)
-          .send({ action: 'TERIMA' });
+          .send({ action: 'TERIMA', reason: REASON });
         statuses.push(response.status);
       }
 

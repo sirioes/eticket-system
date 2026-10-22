@@ -7,6 +7,7 @@ export interface AdvanceStageCommand {
   readonly action: StageAction;
   readonly nextStage: TicketStage;
   readonly actorId: number;
+  readonly reason: string | null;
 }
 
 export abstract class TicketStageRepository {
