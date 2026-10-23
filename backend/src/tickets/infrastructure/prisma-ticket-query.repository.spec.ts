@@ -85,6 +85,10 @@ describe('PrismaTicketQueryRepository', () => {
       });
       expect(select.stageLogs.orderBy).toEqual({ createdAt: 'asc' });
       expect(select.attachments.select).not.toHaveProperty('storedName');
+      expect(select.completionFiles.select).not.toHaveProperty('storedName');
+      expect(select.completionFiles.select.uploadedBy).toEqual({
+        select: { fullName: true, divisi: true },
+      });
     });
   });
 

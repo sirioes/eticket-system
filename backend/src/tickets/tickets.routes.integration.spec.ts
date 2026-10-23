@@ -169,6 +169,7 @@ const ticketAt = (
   createdById: 1,
   createdBy: { fullName: 'Staf IT IT01', divisi: Divisi.IT },
   attachments: [],
+  completionFiles: [],
   timeline: [],
   ...overrides,
 });

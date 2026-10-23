@@ -17,5 +17,6 @@ import { UploadTargetGuard } from './presentation/upload-target.guard';
     DownloadAttachmentUseCase,
     UploadTargetGuard,
   ],
+  exports: [AttachmentFileStore],
 })
 export class AttachmentsModule {}

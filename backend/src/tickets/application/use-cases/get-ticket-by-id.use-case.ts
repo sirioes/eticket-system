@@ -33,6 +33,15 @@ export interface TicketPersonView {
   readonly divisi: `${Divisi}` | null;
 }
 
+export interface TicketCompletionFileView {
+  readonly id: string;
+  readonly fileName: string;
+  readonly mimeType: string;
+  readonly size: number;
+  readonly createdAt: Date;
+  readonly uploadedBy: TicketPersonView;
+}
+
 export interface TicketTimelineEntryView {
   readonly action: TicketLogAction;
   readonly fromStage: TicketStage | null;
@@ -55,6 +64,7 @@ export interface TicketDetailView {
   readonly isCreator: boolean;
   readonly availableActions: StageAction[];
   readonly canUploadAttachment: boolean;
+  readonly completionFiles: TicketCompletionFileView[];
   readonly canReadComments: boolean;
   readonly canComment: boolean;
 }
@@ -94,6 +104,17 @@ export class GetTicketByIdUseCase {
         fileName: attachment.fileName,
         mimeType: attachment.mimeType,
         size: attachment.size,
+      })),
+      completionFiles: ticket.completionFiles.map((file) => ({
+        id: file.id,
+        fileName: file.fileName,
+        mimeType: file.mimeType,
+        size: file.size,
+        createdAt: file.createdAt,
+        uploadedBy: {
+          fullName: file.uploadedBy.fullName,
+          divisi: file.uploadedBy.divisi,
+        },
       })),
       timeline: ticket.timeline.map((entry) => ({
         action: entry.action,

@@ -56,6 +56,20 @@ export class PrismaTicketStageRepository implements TicketStageRepository {
             select: { id: true },
           });
         }
+
+        const files = command.completionFiles ?? [];
+        if (files.length > 0) {
+          await tx.ticketCompletionFile.createMany({
+            data: files.map((file) => ({
+              ticketId: command.ticketId,
+              fileName: file.fileName,
+              storedName: file.storedName,
+              mimeType: file.mimeType,
+              size: file.size,
+              uploadedById: command.actorId,
+            })),
+          });
+        }
         return true;
       }, TRANSACTION_OPTIONS);
     } catch (error) {

@@ -30,6 +30,7 @@ describe('PrismaTicketStageRepository', () => {
     ticket: { updateMany: jest.fn() },
     ticketStageLog: { create: jest.fn() },
     ticketMessage: { create: jest.fn() },
+    ticketCompletionFile: { createMany: jest.fn() },
   };
   const prisma = { $transaction: jest.fn() };
   const repository = new PrismaTicketStageRepository(
@@ -100,6 +101,85 @@ describe('PrismaTicketStageRepository', () => {
     tx.ticketMessage.create.mockRejectedValue(failure);
 
     await expect(repository.advanceStage(accept)).rejects.toBe(failure);
+  });
+
+  describe('dokumen penyelesaian', () => {
+    const complete: AdvanceStageCommand = {
+      ...accept,
+      expectedStage: 'DIPROSES',
+      action: 'SELESAI',
+      nextStage: 'SELESAI',
+      reason: null,
+    };
+
+    const files = [
+      {
+        fileName: 'LPJ.xlsx',
+        storedName: '3f2b8c1e-5a47-4d9b-8e60-1c2d3e4f5a61',
+        mimeType:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        size: 2048,
+      },
+      {
+        fileName: 'foto.png',
+        storedName: '3f2b8c1e-5a47-4d9b-8e60-1c2d3e4f5a62',
+        mimeType: 'image/png',
+        size: 512,
+      },
+    ];
+
+    it('menyimpan semua dokumen dalam transaksi yang sama atas nama pelaku', async () => {
+      tx.ticket.updateMany.mockResolvedValue({ count: 1 });
+      tx.ticketStageLog.create.mockResolvedValue({ id: 'log-1' });
+
+      await expect(
+        repository.advanceStage({ ...complete, completionFiles: files }),
+      ).resolves.toBe(true);
+
+      expect(tx.ticketCompletionFile.createMany).toHaveBeenCalledWith({
+        data: files.map((file) => ({
+          ticketId: 'IT-20261008-001',
+          ...file,
+          uploadedById: 21,
+        })),
+      });
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([undefined, []])(
+      'tidak menulis dokumen bila daftar %j',
+      async (completionFiles) => {
+        tx.ticket.updateMany.mockResolvedValue({ count: 1 });
+        tx.ticketStageLog.create.mockResolvedValue({ id: 'log-1' });
+
+        await expect(
+          repository.advanceStage({ ...complete, completionFiles }),
+        ).resolves.toBe(true);
+
+        expect(tx.ticketCompletionFile.createMany).not.toHaveBeenCalled();
+      },
+    );
+
+    it('tidak menulis dokumen kalau tahap sudah berubah', async () => {
+      tx.ticket.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        repository.advanceStage({ ...complete, completionFiles: files }),
+      ).resolves.toBe(false);
+
+      expect(tx.ticketCompletionFile.createMany).not.toHaveBeenCalled();
+    });
+
+    it('meneruskan kegagalan menulis dokumen supaya transaksi dibatalkan', async () => {
+      const failure = new Error('gagal menulis dokumen');
+      tx.ticket.updateMany.mockResolvedValue({ count: 1 });
+      tx.ticketStageLog.create.mockResolvedValue({ id: 'log-1' });
+      tx.ticketCompletionFile.createMany.mockRejectedValue(failure);
+
+      await expect(
+        repository.advanceStage({ ...complete, completionFiles: files }),
+      ).rejects.toBe(failure);
+    });
   });
 
   it('menyimpan tahap dan pelaku penolakan saat TOLAK', async () => {
