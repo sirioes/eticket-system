@@ -50,6 +50,7 @@ import {
 } from '../application/use-cases/advance-ticket-stage.use-case';
 import { CompleteTicketUseCase } from '../application/use-cases/complete-ticket.use-case';
 import { DownloadCompletionFileUseCase } from '../application/use-cases/download-completion-file.use-case';
+import { ExportTicketDetailUseCase } from '../application/use-cases/export-ticket-detail.use-case';
 import {
   ListTicketMessagesUseCase,
   TicketMessageView,
@@ -108,6 +109,7 @@ export class TicketsController {
     private readonly postTicketComment: PostTicketCommentUseCase,
     private readonly completeTicket: CompleteTicketUseCase,
     private readonly downloadCompletionFile: DownloadCompletionFileUseCase,
+    private readonly exportTicketDetail: ExportTicketDetailUseCase,
   ) {}
 
   @Roles(...DIVISI_MEMBER_ROLES)
@@ -180,6 +182,26 @@ export class TicketsController {
   @Get('recent')
   recent(@CurrentUser() user: AuthUser): Promise<TicketListItemView[]> {
     return this.getRecentTickets.execute(user);
+  }
+
+  @AnyRole()
+  @Throttle(EXPORT_THROTTLE)
+  @UseGuards(SameOriginGuard)
+  @Get(':id/export')
+  @Header('Content-Security-Policy', "default-src 'none'; sandbox")
+  async exportDetail(
+    @CurrentUser() user: AuthUser,
+    @Param() params: TicketIdParamDto,
+  ): Promise<StreamableFile> {
+    const file = await this.exportTicketDetail.execute({
+      user,
+      ticketId: params.id,
+    });
+    return new StreamableFile(file.content, {
+      type: XLSX_CONTENT_TYPE,
+      length: file.content.length,
+      disposition: attachmentDisposition(file.fileName),
+    });
   }
 
   @AnyRole()
