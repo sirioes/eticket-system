@@ -10,6 +10,7 @@ import type {
   TicketListFilters,
   TicketListItem,
   TicketListQuery,
+  TicketMessage,
   TicketStats,
   UploadedAttachment,
 } from "@/types/ticket.types";
@@ -81,8 +82,23 @@ export function getTicket(id: string): Promise<TicketDetail> {
   return api.get<TicketDetail>(ticketPath(id));
 }
 
-export function advanceTicketStage(id: string, action: StageAction): Promise<AdvancedTicket> {
-  return api.patch<AdvancedTicket>(`${ticketPath(id)}/stage`, { action });
+export function advanceTicketStage(
+  id: string,
+  action: StageAction,
+  reason?: string,
+): Promise<AdvancedTicket> {
+  return api.patch<AdvancedTicket>(
+    `${ticketPath(id)}/stage`,
+    reason === undefined ? { action } : { action, reason },
+  );
+}
+
+export function listTicketMessages(id: string): Promise<TicketMessage[]> {
+  return api.get<TicketMessage[]>(`${ticketPath(id)}/messages`);
+}
+
+export function postTicketMessage(id: string, body: string): Promise<TicketMessage> {
+  return api.post<TicketMessage>(`${ticketPath(id)}/messages`, { body });
 }
 
 export function downloadAttachment(ticketId: string, attachmentId: string): Promise<DownloadedFile> {

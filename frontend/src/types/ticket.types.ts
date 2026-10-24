@@ -85,6 +85,21 @@ export interface TicketDetail {
   isCreator: boolean;
   availableActions: StageAction[];
   canUploadAttachment: boolean;
+  canReadComments: boolean;
+  canComment: boolean;
+}
+
+export type TicketMessageKind = 'KOMENTAR' | 'ALASAN';
+
+export type ReasonLabel = 'PENGAJUAN' | 'MENERIMA' | 'MENOLAK';
+
+export interface TicketMessage {
+  id: string;
+  kind: TicketMessageKind;
+  reasonLabel: ReasonLabel | null;
+  body: string;
+  createdAt: string;
+  author: TicketPerson;
 }
 
 export interface AdvancedTicket {

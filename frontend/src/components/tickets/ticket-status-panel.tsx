@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/layout/user-context";
 import { refreshActionCounts } from "@/components/layout/use-action-counts";
+import { ReasonDialog, type ReasonAction } from "@/components/tickets/reason-dialog";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { PRIMARY_BUTTON_CLASS } from "@/components/ui/button-class";
 import { CARD_CLASS } from "@/components/ui/card-class";
@@ -28,12 +29,11 @@ interface ActionCopy {
 const DANGER_BUTTON_CLASS =
   "flex h-12 items-center justify-center gap-2 rounded-xl border border-red bg-mist px-6 font-semibold text-red transition-[background-color,color,transform] duration-200 ease-spring hover:bg-red hover:text-mist active:scale-95 disabled:cursor-not-allowed disabled:opacity-60";
 
-const DIALOG_CONFIRM_CLASS: Record<"default" | "danger", string> = {
-  default: "bg-teal hover:bg-ink",
-  danger: "bg-red hover:bg-berry",
-};
-
 const REFRESH_STATUSES = new Set([403, 404, 409]);
+
+function isReasonAction(action: StageAction): action is ReasonAction {
+  return action === "TERIMA" || action === "TOLAK";
+}
 
 function actionCopy(ticket: TicketDetail, action: StageAction): ActionCopy {
   const toLabel = DIVISI_LABEL[ticket.toDivisi];
@@ -53,7 +53,7 @@ function actionCopy(ticket: TicketDetail, action: StageAction): ActionCopy {
     case "TOLAK":
       return {
         title: "Tolak pengaduan ini?",
-        description: "Pengaduan akan ditutup dengan status Ditolak dan tidak dapat diproses lagi.",
+        description: "Penolakan bersifat permanen. Pengaduan akan ditutup dengan status Ditolak dan tidak dapat diproses lagi.",
         confirm: "Ya, tolak",
         success: "Pengaduan ditolak.",
       };
@@ -85,16 +85,22 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
   const user = useUser();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState<StageAction | null>(null);
+  const [reasonAction, setReasonAction] = useState<ReasonAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const terminal = ticket.stage === "SELESAI" || ticket.stage === "DITOLAK";
   const actions = ticket.availableActions;
   const copy = pending ? actionCopy(ticket, pending) : null;
+  const reasonCopy = reasonAction ? actionCopy(ticket, reasonAction) : null;
 
   function open(action: StageAction) {
-    setPending(action);
     setNotice(null);
+    if (isReasonAction(action)) {
+      setReasonAction(action);
+      return;
+    }
+    setPending(action);
     dialogRef.current?.showModal();
   }
 
@@ -102,12 +108,12 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
     if (!busy) dialogRef.current?.close();
   }
 
-  async function confirm() {
-    if (!pending || !copy || busy) return;
+  async function run(action: StageAction, success: string, reason?: string) {
+    if (busy) return;
     setBusy(true);
     try {
-      await advanceTicketStage(ticket.id, pending);
-      setNotice({ tone: "success", message: copy.success });
+      await advanceTicketStage(ticket.id, action, reason);
+      setNotice({ tone: "success", message: success });
       refreshActionCounts();
       onChanged();
     } catch (caught) {
@@ -122,8 +128,13 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
       }
     } finally {
       setBusy(false);
+      setReasonAction(null);
       dialogRef.current?.close();
     }
+  }
+
+  function confirm() {
+    if (pending && copy) void run(pending, copy.success);
   }
 
   return (
@@ -204,7 +215,7 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
                 onClick={confirm}
                 disabled={busy}
                 aria-busy={busy}
-                className={`flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-mist transition-[background-color,transform] duration-200 ease-spring active:scale-95 disabled:cursor-not-allowed disabled:opacity-80 ${DIALOG_CONFIRM_CLASS[pending === "TOLAK" ? "danger" : "default"]}`}
+                className={`flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-mist transition-[background-color,transform] duration-200 ease-spring active:scale-95 disabled:cursor-not-allowed disabled:opacity-80 bg-teal hover:bg-ink`}
               >
                 {busy && (
                   <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist" />
@@ -215,6 +226,19 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
           </div>
         )}
       </dialog>
+
+      {reasonAction && reasonCopy && (
+        <ReasonDialog
+          action={reasonAction}
+          ticketId={ticket.id}
+          title={reasonCopy.title}
+          description={`${reasonCopy.description} Tindakan ini tidak dapat dibatalkan.`}
+          confirmLabel={reasonCopy.confirm}
+          busy={busy}
+          onSubmit={(reason) => void run(reasonAction, reasonCopy.success, reason)}
+          onClose={() => setReasonAction(null)}
+        />
+      )}
     </section>
   );
 }

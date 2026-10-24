@@ -1,6 +1,11 @@
 export const DESCRIPTION_MIN_LENGTH = 10;
 export const DESCRIPTION_MAX_LENGTH = 2000;
 
+export const REASON_MIN_LENGTH = 10;
+export const REASON_MAX_LENGTH = 500;
+
+export const COMMENT_MAX_LENGTH = 1000;
+
 export const MAX_ATTACHMENTS_PER_TICKET = 5;
 export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 

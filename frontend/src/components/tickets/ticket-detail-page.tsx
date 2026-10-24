@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/layout/user-context";
 import { TicketAttachments } from "@/components/tickets/ticket-attachments";
+import { TicketComments } from "@/components/tickets/ticket-comments";
 import { TicketNotFound } from "@/components/tickets/ticket-not-found";
 import { TicketStatusPanel } from "@/components/tickets/ticket-status-panel";
 import { TicketTimeline } from "@/components/tickets/ticket-timeline";
@@ -132,6 +133,10 @@ export function TicketDetailPage({ id }: { id: string }) {
       </header>
 
       <TicketStatusPanel ticket={ticket} refreshing={refreshing} onChanged={reload} />
+
+      {ticket.canReadComments && ticket.stage !== "MENUNGGU_MANAGER_ASAL" && (
+        <TicketComments key={ticket.id} ticket={ticket} onChanged={reload} />
+      )}
 
       <section aria-labelledby="progress-title" className={`${CARD_CLASS} animate-fade-up [animation-delay:120ms]`}>
         <h2 id="progress-title" className="text-lg font-semibold">
