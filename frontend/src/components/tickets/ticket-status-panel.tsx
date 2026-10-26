@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/layout/user-context";
 import { refreshActionCounts } from "@/components/layout/use-action-counts";
+import { CompleteDialog } from "@/components/tickets/complete-dialog";
 import { ReasonDialog, type ReasonAction } from "@/components/tickets/reason-dialog";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { PRIMARY_BUTTON_CLASS } from "@/components/ui/button-class";
@@ -11,7 +12,7 @@ import { CARD_CLASS } from "@/components/ui/card-class";
 import { ApiError, errorMessage, isUnauthorized } from "@/lib/api";
 import { DIVISI_LABEL, STAGE_ACTION_LABEL } from "@/lib/labels";
 import { stageSummary } from "@/lib/ticket-progress";
-import { advanceTicketStage } from "@/lib/tickets";
+import { advanceTicketStage, completeTicket } from "@/lib/tickets";
 import type { StageAction, TicketDetail } from "@/types/ticket.types";
 
 interface Notice {
@@ -86,6 +87,7 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState<StageAction | null>(null);
   const [reasonAction, setReasonAction] = useState<ReasonAction | null>(null);
+  const [completing, setCompleting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -100,6 +102,10 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
       setReasonAction(action);
       return;
     }
+    if (action === "SELESAI") {
+      setCompleting(true);
+      return;
+    }
     setPending(action);
     dialogRef.current?.showModal();
   }
@@ -108,11 +114,13 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
     if (!busy) dialogRef.current?.close();
   }
 
-  async function run(action: StageAction, success: string, reason?: string) {
+  async function run(task: () => Promise<unknown>, success: string) {
     if (busy) return;
     setBusy(true);
+    setNotice(null);
+    let keepCompleteOpen = false;
     try {
-      await advanceTicketStage(ticket.id, action, reason);
+      await task();
       setNotice({ tone: "success", message: success });
       refreshActionCounts();
       onChanged();
@@ -125,16 +133,19 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
       if (caught instanceof ApiError && REFRESH_STATUSES.has(caught.status)) {
         refreshActionCounts();
         onChanged();
+      } else {
+        keepCompleteOpen = true;
       }
     } finally {
       setBusy(false);
       setReasonAction(null);
+      if (!keepCompleteOpen) setCompleting(false);
       dialogRef.current?.close();
     }
   }
 
   function confirm() {
-    if (pending && copy) void run(pending, copy.success);
+    if (pending && copy) void run(() => advanceTicketStage(ticket.id, pending), copy.success);
   }
 
   return (
@@ -235,8 +246,18 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
           description={`${reasonCopy.description} Tindakan ini tidak dapat dibatalkan.`}
           confirmLabel={reasonCopy.confirm}
           busy={busy}
-          onSubmit={(reason) => void run(reasonAction, reasonCopy.success, reason)}
+          onSubmit={(reason) => void run(() => advanceTicketStage(ticket.id, reasonAction, reason), reasonCopy.success)}
           onClose={() => setReasonAction(null)}
+        />
+      )}
+
+      {completing && (
+        <CompleteDialog
+          ticketId={ticket.id}
+          busy={busy}
+          error={notice?.tone === "error" ? notice.message : null}
+          onSubmit={(files) => void run(() => completeTicket(ticket.id, files), actionCopy(ticket, "SELESAI").success)}
+          onClose={() => setCompleting(false)}
         />
       )}
     </section>

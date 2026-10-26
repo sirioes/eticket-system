@@ -78,7 +78,7 @@ export function RecentTicketsTable({
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">Lampiran</dt>
+                  <dt className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">Dokumen Pengaduan</dt>
                   <dd>
                     <Attachments count={item.attachmentCount} />
                   </dd>
@@ -103,7 +103,7 @@ export function RecentTicketsTable({
               <th scope="col" className="py-3 pr-4 font-medium">No</th>
               <th scope="col" className="py-3 pr-4 font-medium">ID Pengaduan</th>
               <th scope="col" className="py-3 pr-4 font-medium">Deskripsi</th>
-              <th scope="col" className="py-3 pr-4 font-medium">Lampiran</th>
+              <th scope="col" className="py-3 pr-4 font-medium">Dokumen Pengaduan</th>
               <th scope="col" className="py-3 pr-4 font-medium">Status</th>
               <th scope="col" className="py-3 pr-4 font-medium">Tanggal</th>
               <th scope="col" className="py-3 pr-4 font-medium">Jenis</th>

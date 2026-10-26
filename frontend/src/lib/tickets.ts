@@ -16,6 +16,7 @@ import type {
 } from "@/types/ticket.types";
 
 const UPLOAD_FIELD_NAME = "file";
+const COMPLETION_FIELD_NAME = "files";
 
 const TICKET_ID_PATTERN = /^[A-Za-z0-9-]{1,100}$/;
 
@@ -93,6 +94,12 @@ export function advanceTicketStage(
   );
 }
 
+export function completeTicket(id: string, files: File[]): Promise<AdvancedTicket> {
+  const formData = new FormData();
+  for (const file of files) formData.append(COMPLETION_FIELD_NAME, file);
+  return api.upload<AdvancedTicket>(`${ticketPath(id)}/complete`, formData);
+}
+
 export function listTicketMessages(id: string): Promise<TicketMessage[]> {
   return api.get<TicketMessage[]>(`${ticketPath(id)}/messages`);
 }
@@ -103,6 +110,10 @@ export function postTicketMessage(id: string, body: string): Promise<TicketMessa
 
 export function downloadAttachment(ticketId: string, attachmentId: string): Promise<DownloadedFile> {
   return api.download(`${ticketPath(ticketId)}/attachments/${encodeURIComponent(attachmentId)}`);
+}
+
+export function downloadCompletionFile(ticketId: string, fileId: string): Promise<DownloadedFile> {
+  return api.download(`${ticketPath(ticketId)}/completion-files/${encodeURIComponent(fileId)}`);
 }
 
 export function downloadOutgoingExport(filters: TicketListFilters): Promise<DownloadedFile> {

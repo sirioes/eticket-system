@@ -63,6 +63,15 @@ export interface TicketAttachment {
   size: number;
 }
 
+export interface TicketCompletionFile {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  uploadedBy: TicketPerson;
+  createdAt: string;
+}
+
 export interface TicketTimelineEntry {
   action: TicketLogAction;
   fromStage: TicketStage | null;
@@ -81,6 +90,7 @@ export interface TicketDetail {
   createdAt: string;
   createdBy: TicketPerson;
   attachments: TicketAttachment[];
+  completionFiles: TicketCompletionFile[];
   timeline: TicketTimelineEntry[];
   isCreator: boolean;
   availableActions: StageAction[];

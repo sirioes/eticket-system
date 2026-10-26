@@ -139,7 +139,7 @@ function TicketForm({ fromDivisi }: { fromDivisi: Divisi }) {
         {result.failedUploads.length > 0 && (
           <div role="alert" className="mt-4 rounded-xl bg-red/10 px-4 py-3 text-sm text-red">
             <p className="font-medium">
-              Pengaduan sudah tercatat, tetapi lampiran berikut gagal diunggah:
+              Pengaduan sudah tercatat, tetapi dokumen pengaduan berikut gagal diunggah:
             </p>
             <ul className="mt-2 list-disc pl-5">
               {result.failedUploads.map((failure, index) => (
@@ -149,7 +149,7 @@ function TicketForm({ fromDivisi }: { fromDivisi: Divisi }) {
               ))}
             </ul>
             <p className="mt-2">
-              Lampiran yang gagal dapat ditambahkan lagi dari halaman detail pengaduan selama
+              Dokumen pengaduan yang gagal dapat ditambahkan lagi dari halaman detail pengaduan selama
               pengaduan masih menunggu manajer divisi pengirim.
             </p>
           </div>
@@ -223,7 +223,7 @@ function TicketForm({ fromDivisi }: { fromDivisi: Divisi }) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className={LABEL_CLASS}>Lampiran</span>
+          <span className={LABEL_CLASS}>Dokumen Pengaduan</span>
           <AttachmentDropzone
             files={files}
             errors={fileErrors}

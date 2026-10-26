@@ -4,8 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/layout/user-context";
-import { TicketAttachments } from "@/components/tickets/ticket-attachments";
 import { TicketComments } from "@/components/tickets/ticket-comments";
+import { TicketFiles } from "@/components/tickets/ticket-files";
 import { TicketNotFound } from "@/components/tickets/ticket-not-found";
 import { TicketStatusPanel } from "@/components/tickets/ticket-status-panel";
 import { TicketTimeline } from "@/components/tickets/ticket-timeline";
@@ -168,7 +168,7 @@ export function TicketDetailPage({ id }: { id: string }) {
           </div>
         </section>
 
-        <TicketAttachments ticket={ticket} refreshing={refreshing} onChanged={reload} />
+        <TicketFiles ticket={ticket} refreshing={refreshing} onChanged={reload} />
       </div>
     </div>
   );
