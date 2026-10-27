@@ -4,14 +4,19 @@ import { PrismaTicketDetailExportRepository } from './prisma-ticket-detail-expor
 
 describe('PrismaTicketDetailExportRepository', () => {
   const ticketDelegate = { findUnique: jest.fn() };
+  const messageDelegate = { findMany: jest.fn() };
   const repository = new PrismaTicketDetailExportRepository({
     ticket: ticketDelegate,
+    ticketMessage: messageDelegate,
   } as unknown as PrismaService);
 
   const createdAt = new Date('2026-10-08T01:00:00Z');
   const actor = { fullName: 'Budi', divisi: Divisi.IT };
 
-  beforeEach(() => jest.resetAllMocks());
+  beforeEach(() => {
+    jest.resetAllMocks();
+    messageDelegate.findMany.mockResolvedValue([]);
+  });
 
   it('mengembalikan null kalau tiket tidak ada', async () => {
     ticketDelegate.findUnique.mockResolvedValue(null);
@@ -62,6 +67,34 @@ describe('PrismaTicketDetailExportRepository', () => {
       },
     ]);
     expect(result).not.toHaveProperty('stageLogs');
+  });
+
+  it('memuat komentar berurutan hanya bila diminta', async () => {
+    const comment = { body: 'Sudah dicek', createdAt, author: actor };
+    ticketDelegate.findUnique.mockResolvedValue({
+      id: 'IT-20261008-001',
+      stageLogs: [],
+    });
+    messageDelegate.findMany.mockResolvedValue([comment]);
+
+    const withComments = await repository.findById('IT-20261008-001', true);
+
+    expect(withComments?.comments).toEqual([comment]);
+    expect(messageDelegate.findMany).toHaveBeenCalledWith({
+      where: { ticketId: 'IT-20261008-001', kind: 'KOMENTAR' },
+      select: {
+        body: true,
+        createdAt: true,
+        author: { select: { fullName: true, divisi: true } },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+
+    messageDelegate.findMany.mockClear();
+    const without = await repository.findById('IT-20261008-001', false);
+
+    expect(without?.comments).toEqual([]);
+    expect(messageDelegate.findMany).not.toHaveBeenCalled();
   });
 
   it('tidak memuat isi pesan kalau alasan tidak diminta', async () => {

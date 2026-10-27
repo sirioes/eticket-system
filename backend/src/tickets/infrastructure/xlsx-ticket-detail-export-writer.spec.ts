@@ -4,6 +4,8 @@ import {
   TicketDetailExportHistoryRow,
 } from '../application/ports/ticket-detail-export-writer';
 import {
+  COMMENT_HEADERS,
+  COMMENTS_SHEET_NAME,
   HISTORY_HEADERS,
   HISTORY_SHEET_NAME,
   INFORMATION_LABELS,
@@ -68,6 +70,7 @@ const detail = (
     description: 'Printer lantai 2 tidak bisa mencetak',
   },
   history: [historyRow()],
+  comments: [],
   includeReason: false,
   ...overrides,
 });
@@ -81,6 +84,9 @@ describe('XlsxTicketDetailExportWriter', () => {
       file,
       information: readZipEntry(file, 'xl/worksheets/sheet1.xml'),
       history: readZipEntry(file, 'xl/worksheets/sheet2.xml'),
+      comments: data.includeReason
+        ? readZipEntry(file, 'xl/worksheets/sheet3.xml')
+        : '',
       strings: readZipEntry(file, 'xl/sharedStrings.xml'),
       workbook: readZipEntry(file, 'xl/workbook.xml'),
     };
@@ -118,6 +124,31 @@ describe('XlsxTicketDetailExportWriter', () => {
     }
     expect(information).toMatch(/r="B5"[^>]*><v>46305<\/v>/);
     expect(information).not.toMatch(/r="A8"/);
+  });
+
+  it('menambah sheet Komentar hanya bila alasan dan komentar boleh dibaca', async () => {
+    const comments = [
+      {
+        author: 'Tono Pajak',
+        divisi: 'Pajak',
+        createdAt: new Date('2026-10-09T16:00:00.000Z'),
+        body: 'Sudah dicek tim pajak',
+      },
+    ];
+    const withComments = await write(detail({ includeReason: true, comments }));
+    const without = await write(detail({ comments }));
+
+    expect(withComments.workbook).toContain(`name="${COMMENTS_SHEET_NAME}"`);
+    expect(withComments.workbook.match(/<sheet /g)).toHaveLength(3);
+    for (const header of COMMENT_HEADERS) {
+      expect(withComments.strings).toContain(`<t>${header}</t>`);
+    }
+    expect(withComments.strings).toContain('<t>Sudah dicek tim pajak</t>');
+    expect(withComments.comments).toContain('ySplit="1"');
+    expect(withComments.comments).toMatch(/r="D2"/);
+
+    expect(without.workbook).not.toContain(`name="${COMMENTS_SHEET_NAME}"`);
+    expect(without.strings).not.toContain('Sudah dicek tim pajak');
   });
 
   it('menulis kolom Alasan hanya bila diminta', async () => {

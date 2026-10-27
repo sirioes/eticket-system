@@ -53,6 +53,17 @@ export class ExportTicketDetailUseCase {
         createdAt: entry.createdAt,
         reason: includeReason ? entry.reason : null,
       })),
+      comments: includeReason
+        ? ticket.comments.map((comment) => ({
+            author: comment.author.fullName,
+            divisi:
+              comment.author.divisi === null
+                ? null
+                : DIVISI_LABEL[comment.author.divisi],
+            createdAt: comment.createdAt,
+            body: comment.body,
+          }))
+        : [],
       includeReason,
     });
 

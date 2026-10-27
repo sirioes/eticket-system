@@ -65,6 +65,13 @@ const source = (
       reason: 'Dapat dikerjakan minggu ini',
     },
   ],
+  comments: [
+    {
+      body: 'Sudah dicek tim pajak',
+      createdAt: new Date('2026-10-08T04:00:00Z'),
+      author: { fullName: 'Tono Pajak', divisi: Divisi.TAX },
+    },
+  ],
   ...overrides,
 });
 
@@ -212,6 +219,14 @@ describe('ExportTicketDetailUseCase', () => {
     const { data } = await exportAs(actor);
 
     expect(data.includeReason).toBe(true);
+    expect(data.comments).toEqual([
+      {
+        author: 'Tono Pajak',
+        divisi: 'Pajak',
+        createdAt: new Date('2026-10-08T04:00:00Z'),
+        body: 'Sudah dicek tim pajak',
+      },
+    ]);
     expect(data.history.map((row) => row.reason)).toEqual([
       null,
       'Kebutuhan sudah jelas dan mendesak',
@@ -226,7 +241,9 @@ describe('ExportTicketDetailUseCase', () => {
     const { data } = await exportAs(actor);
 
     expect(data.includeReason).toBe(false);
+    expect(data.comments).toEqual([]);
     expect(data.history.every((row) => row.reason === null)).toBe(true);
     expect(JSON.stringify(data)).not.toContain('Kebutuhan sudah jelas');
+    expect(JSON.stringify(data)).not.toContain('Sudah dicek tim pajak');
   });
 });

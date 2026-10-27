@@ -56,9 +56,22 @@ export class PrismaTicketDetailExportRepository implements TicketDetailExportRep
     });
     if (ticket === null) return null;
 
+    const comments = includeReason
+      ? await this.prisma.ticketMessage.findMany({
+          where: { ticketId: id, kind: 'KOMENTAR' },
+          select: {
+            body: true,
+            createdAt: true,
+            author: { select: ACTOR_SELECT },
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        })
+      : [];
+
     const { stageLogs, ...rest } = ticket;
     return {
       ...rest,
+      comments,
       history: stageLogs.map(({ message, ...entry }) => ({
         ...entry,
         reason: message?.body ?? null,

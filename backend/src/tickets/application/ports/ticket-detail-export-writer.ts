@@ -16,9 +16,17 @@ export interface TicketDetailExportHistoryRow {
   readonly reason: string | null;
 }
 
+export interface TicketDetailExportCommentRow {
+  readonly author: string;
+  readonly divisi: string | null;
+  readonly createdAt: Date;
+  readonly body: string;
+}
+
 export interface TicketDetailExport {
   readonly information: TicketDetailExportInformation;
   readonly history: readonly TicketDetailExportHistoryRow[];
+  readonly comments: readonly TicketDetailExportCommentRow[];
   readonly includeReason: boolean;
 }
 

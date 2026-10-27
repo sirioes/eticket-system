@@ -10,12 +10,19 @@ export interface TicketExportHistoryEntry {
   readonly reason: string | null;
 }
 
+export interface TicketExportComment {
+  readonly body: string;
+  readonly createdAt: Date;
+  readonly author: TicketActor;
+}
+
 export interface TicketExportSource extends VisibleTicket {
   readonly id: string;
   readonly description: string;
   readonly createdAt: Date;
   readonly createdBy: TicketActor;
   readonly history: TicketExportHistoryEntry[];
+  readonly comments: TicketExportComment[];
 }
 
 export abstract class TicketDetailExportRepository {

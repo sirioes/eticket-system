@@ -28,6 +28,15 @@ export const HISTORY_HEADERS = [
   'Waktu (WITA)',
 ] as const;
 
+export const COMMENTS_SHEET_NAME = 'Komentar';
+
+export const COMMENT_HEADERS = [
+  'Penulis',
+  'Divisi',
+  'Waktu (WITA)',
+  'Komentar',
+] as const;
+
 export const REASON_HEADER = 'Alasan';
 
 const EXPORT_DATE_FORMAT = 'yyyy-mm-dd hh:mm';
@@ -35,6 +44,8 @@ const EXPORT_DATE_FORMAT = 'yyyy-mm-dd hh:mm';
 const INFORMATION_COLUMN_WIDTHS = [24, 70];
 
 const HISTORY_COLUMN_WIDTHS = [36, 28, 20, 22];
+
+const COMMENT_COLUMN_WIDTHS = [28, 20, 22, 70];
 
 const REASON_COLUMN_WIDTH = 70;
 
@@ -97,6 +108,21 @@ function historyRows(data: TicketDetailExport): Row[] {
   return [header, ...body];
 }
 
+function commentRows(data: TicketDetailExport): Row[] {
+  const header: Row = COMMENT_HEADERS.map((title) => ({
+    value: title,
+    type: String,
+    fontWeight: 'bold' as const,
+  }));
+  const body: Row[] = data.comments.map((comment) => [
+    textCell(comment.author),
+    textCell(comment.divisi),
+    timeCell(comment.createdAt),
+    textCell(comment.body, true),
+  ]);
+  return [header, ...body];
+}
+
 @Injectable()
 export class XlsxTicketDetailExportWriter extends TicketDetailExportWriter {
   async write(data: TicketDetailExport): Promise<Buffer> {
@@ -104,7 +130,7 @@ export class XlsxTicketDetailExportWriter extends TicketDetailExportWriter {
       ? [...HISTORY_COLUMN_WIDTHS, REASON_COLUMN_WIDTH]
       : HISTORY_COLUMN_WIDTHS;
 
-    return writeXlsxFile([
+    const sheets = [
       {
         data: informationRows(data.information),
         sheet: INFORMATION_SHEET_NAME,
@@ -116,6 +142,17 @@ export class XlsxTicketDetailExportWriter extends TicketDetailExportWriter {
         columns: historyWidths.map((width) => ({ width })),
         stickyRowsCount: 1,
       },
-    ]).toBuffer();
+    ];
+
+    if (data.includeReason) {
+      sheets.push({
+        data: commentRows(data),
+        sheet: COMMENTS_SHEET_NAME,
+        columns: COMMENT_COLUMN_WIDTHS.map((width) => ({ width })),
+        stickyRowsCount: 1,
+      });
+    }
+
+    return writeXlsxFile(sheets).toBuffer();
   }
 }
