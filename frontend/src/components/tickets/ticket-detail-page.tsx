@@ -26,7 +26,10 @@ type LoadState =
   | { status: "error"; key: string; message: string }
   | { status: "ready"; key: string; data: TicketDetail };
 
-function backLink(user: SessionUser, ticket: TicketDetail): { href: string; label: string } {
+function backLink(
+  user: SessionUser,
+  ticket: TicketDetail,
+): { href: string; label: string } {
   if (user.role === "SUPERADMIN") {
     return { href: "/semua-pengaduan", label: "Semua Pengaduan" };
   }
@@ -55,13 +58,18 @@ interface TicketDetailContentProps {
   onChanged: () => void;
 }
 
-function TicketDetailContent({ ticket, refreshing, onChanged }: TicketDetailContentProps) {
+function TicketDetailContent({
+  ticket,
+  refreshing,
+  onChanged,
+}: TicketDetailContentProps) {
   const user = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const back = backLink(user, ticket);
-  const showComments = ticket.canReadComments && ticket.stage !== "MENUNGGU_MANAGER_ASAL";
+  const showComments =
+    ticket.canReadComments && ticket.stage !== "MENUNGGU_MANAGER_ASAL";
 
   const available: TabId[] = showComments
     ? ["informasi", "berkas", "komentar", "riwayat"]
@@ -78,14 +86,19 @@ function TicketDetailContent({ ticket, refreshing, onChanged }: TicketDetailCont
 
   const messageCount =
     messages.state.status === "ready"
-      ? messages.state.messages.filter((message) => message.kind === "KOMENTAR").length
+      ? messages.state.messages.filter((message) => message.kind === "KOMENTAR")
+          .length
       : undefined;
   const tabs: TabItem[] = available.map((id) => {
     switch (id) {
       case "informasi":
         return { id, label: "Informasi Pengaduan" };
       case "berkas":
-        return { id, label: "Berkas", count: ticket.attachments.length + ticket.completionFiles.length };
+        return {
+          id,
+          label: "Berkas",
+          count: ticket.attachments.length + ticket.completionFiles.length,
+        };
       case "komentar":
         return { id, label: "Komentar", count: messageCount };
       case "riwayat":
@@ -107,27 +120,62 @@ function TicketDetailContent({ ticket, refreshing, onChanged }: TicketDetailCont
         href={back.href}
         className="group inline-flex w-fit animate-fade-up items-center gap-2 rounded-lg text-sm font-medium text-teal transition-colors duration-200 hover:text-ink"
       >
-        <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 transition-transform duration-200 ease-spring group-hover:-translate-x-1" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="size-4 transition-transform duration-200 ease-spring group-hover:-translate-x-1"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M15 18l-6-6 6-6" />
         </svg>
         Kembali ke {back.label}
       </Link>
 
-      <TicketSummary ticket={ticket} refreshing={refreshing} onChanged={onChanged} />
+      <TicketSummary
+        ticket={ticket}
+        refreshing={refreshing}
+        onChanged={onChanged}
+      />
 
       <div className={CARD_SURFACE_CLASS}>
-        <TabList idPrefix={TAB_PREFIX} label="Isi pengaduan" tabs={tabs} active={activeTab} onChange={selectTab} />
+        <TabList
+          idPrefix={TAB_PREFIX}
+          label="Isi pengaduan"
+          tabs={tabs}
+          active={activeTab}
+          onChange={selectTab}
+        />
 
-        <TabPanel idPrefix={TAB_PREFIX} id="informasi" active={activeTab === "informasi"}>
+        <TabPanel
+          idPrefix={TAB_PREFIX}
+          id="informasi"
+          active={activeTab === "informasi"}
+        >
           <TicketInfoPanel ticket={ticket} />
         </TabPanel>
 
-        <TabPanel idPrefix={TAB_PREFIX} id="berkas" active={activeTab === "berkas"}>
-          <TicketFiles ticket={ticket} refreshing={refreshing} onChanged={onChanged} />
+        <TabPanel
+          idPrefix={TAB_PREFIX}
+          id="berkas"
+          active={activeTab === "berkas"}
+        >
+          <TicketFiles
+            ticket={ticket}
+            refreshing={refreshing}
+            onChanged={onChanged}
+          />
         </TabPanel>
 
         {showComments && (
-          <TabPanel idPrefix={TAB_PREFIX} id="komentar" active={activeTab === "komentar"}>
+          <TabPanel
+            idPrefix={TAB_PREFIX}
+            id="komentar"
+            active={activeTab === "komentar"}
+          >
             <TicketComments
               ticket={ticket}
               messages={messages.state}
@@ -139,7 +187,11 @@ function TicketDetailContent({ ticket, refreshing, onChanged }: TicketDetailCont
           </TabPanel>
         )}
 
-        <TabPanel idPrefix={TAB_PREFIX} id="riwayat" active={activeTab === "riwayat"}>
+        <TabPanel
+          idPrefix={TAB_PREFIX}
+          id="riwayat"
+          active={activeTab === "riwayat"}
+        >
           <div className="flex flex-col gap-6">
             <h2 className="text-lg font-semibold">Riwayat Pengaduan</h2>
             <TicketTimeline steps={ticketProgress(ticket)} />
@@ -169,11 +221,18 @@ export function TicketDetailPage({ id }: { id: string }) {
           router.replace("/login?reason=expired");
           return;
         }
-        if (caught instanceof ApiError && (caught.status === 404 || caught.status === 400)) {
+        if (
+          caught instanceof ApiError &&
+          (caught.status === 404 || caught.status === 400)
+        ) {
           setLoad({ status: "missing", key: requestKey });
           return;
         }
-        setLoad({ status: "error", key: requestKey, message: errorMessage(caught) });
+        setLoad({
+          status: "error",
+          key: requestKey,
+          message: errorMessage(caught),
+        });
       });
     return () => {
       active = false;
@@ -199,10 +258,19 @@ export function TicketDetailPage({ id }: { id: string }) {
   if (load.status === "error") {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="animate-fade-up text-2xl font-semibold tracking-tight sm:text-3xl">Detail Pengaduan</h1>
-        <div role="alert" className="flex animate-fade-in flex-col items-start gap-3 rounded-xl bg-red/10 px-4 py-3 text-sm text-wine sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="animate-fade-up text-2xl font-semibold tracking-tight sm:text-3xl">
+          Detail Pengaduan
+        </h1>
+        <div
+          role="alert"
+          className="flex animate-fade-in flex-col items-start gap-3 rounded-xl bg-red/10 px-4 py-3 text-sm text-wine sm:flex-row sm:items-center sm:justify-between"
+        >
           <p className="font-medium">{load.message}</p>
-          <button type="button" onClick={reload} className={`${SECONDARY_BUTTON_CLASS} h-10 bg-mist text-ink`}>
+          <button
+            type="button"
+            onClick={reload}
+            className={`${SECONDARY_BUTTON_CLASS} h-10 bg-mist text-ink`}
+          >
             Coba lagi
           </button>
         </div>
@@ -210,5 +278,11 @@ export function TicketDetailPage({ id }: { id: string }) {
     );
   }
 
-  return <TicketDetailContent ticket={load.data} refreshing={!settled} onChanged={reload} />;
+  return (
+    <TicketDetailContent
+      ticket={load.data}
+      refreshing={!settled}
+      onChanged={reload}
+    />
+  );
 }

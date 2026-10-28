@@ -30,7 +30,10 @@ export function TicketSearch({ className = "" }: { className?: string }) {
     }
     setError(null);
     setValue("");
-    const query = writeTicketListState({ filters: { search: trimmed }, page: 1 });
+    const query = writeTicketListState({
+      filters: { search: trimmed },
+      page: 1,
+    });
     router.push(`/daftar-pengaduan/keluar?${query}`);
   }
 
@@ -74,7 +77,11 @@ export function TicketSearch({ className = "" }: { className?: string }) {
         />
       </div>
       {error && (
-        <p id={`${id}-error`} role="alert" className="mt-1.5 animate-shake text-sm text-wine">
+        <p
+          id={`${id}-error`}
+          role="alert"
+          className="mt-1.5 animate-shake text-sm text-wine"
+        >
           {error}
         </p>
       )}

@@ -239,7 +239,8 @@
 
   @supports not selector(::-webkit-scrollbar) {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklab, var(--color-ink) 28%, transparent) transparent;
+    scrollbar-color: color-mix(in oklab, var(--color-ink) 28%, transparent)
+      transparent;
   }
 }
 

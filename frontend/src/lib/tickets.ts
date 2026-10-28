@@ -20,7 +20,15 @@ const COMPLETION_FIELD_NAME = "files";
 
 const TICKET_ID_PATTERN = /^[A-Za-z0-9-]{1,100}$/;
 
-const QUERY_KEYS = ["search", "status", "divisi", "dateFrom", "dateTo", "page", "limit"] as const;
+const QUERY_KEYS = [
+  "search",
+  "status",
+  "divisi",
+  "dateFrom",
+  "dateTo",
+  "page",
+  "limit",
+] as const;
 
 export function isValidTicketId(id: string): boolean {
   return TICKET_ID_PATTERN.test(id);
@@ -49,17 +57,27 @@ export function createTicket(input: CreateTicketInput): Promise<CreatedTicket> {
   });
 }
 
-export function uploadAttachment(ticketId: string, file: File): Promise<UploadedAttachment> {
+export function uploadAttachment(
+  ticketId: string,
+  file: File,
+): Promise<UploadedAttachment> {
   const formData = new FormData();
   formData.append(UPLOAD_FIELD_NAME, file);
-  return api.upload<UploadedAttachment>(`${ticketPath(ticketId)}/attachments`, formData);
+  return api.upload<UploadedAttachment>(
+    `${ticketPath(ticketId)}/attachments`,
+    formData,
+  );
 }
 
-export function listOutgoingTickets(query: TicketListQuery): Promise<TicketList> {
+export function listOutgoingTickets(
+  query: TicketListQuery,
+): Promise<TicketList> {
   return api.get<TicketList>(withQuery("/tickets/outgoing", query));
 }
 
-export function listIncomingTickets(query: TicketListQuery): Promise<TicketList> {
+export function listIncomingTickets(
+  query: TicketListQuery,
+): Promise<TicketList> {
   return api.get<TicketList>(withQuery("/tickets/incoming", query));
 }
 
@@ -94,7 +112,10 @@ export function advanceTicketStage(
   );
 }
 
-export function completeTicket(id: string, files: File[]): Promise<AdvancedTicket> {
+export function completeTicket(
+  id: string,
+  files: File[],
+): Promise<AdvancedTicket> {
   const formData = new FormData();
   for (const file of files) formData.append(COMPLETION_FIELD_NAME, file);
   return api.upload<AdvancedTicket>(`${ticketPath(id)}/complete`, formData);
@@ -104,23 +125,38 @@ export function listTicketMessages(id: string): Promise<TicketMessage[]> {
   return api.get<TicketMessage[]>(`${ticketPath(id)}/messages`);
 }
 
-export function postTicketMessage(id: string, body: string): Promise<TicketMessage> {
+export function postTicketMessage(
+  id: string,
+  body: string,
+): Promise<TicketMessage> {
   return api.post<TicketMessage>(`${ticketPath(id)}/messages`, { body });
 }
 
-export function downloadAttachment(ticketId: string, attachmentId: string): Promise<DownloadedFile> {
-  return api.download(`${ticketPath(ticketId)}/attachments/${encodeURIComponent(attachmentId)}`);
+export function downloadAttachment(
+  ticketId: string,
+  attachmentId: string,
+): Promise<DownloadedFile> {
+  return api.download(
+    `${ticketPath(ticketId)}/attachments/${encodeURIComponent(attachmentId)}`,
+  );
 }
 
-export function downloadCompletionFile(ticketId: string, fileId: string): Promise<DownloadedFile> {
-  return api.download(`${ticketPath(ticketId)}/completion-files/${encodeURIComponent(fileId)}`);
+export function downloadCompletionFile(
+  ticketId: string,
+  fileId: string,
+): Promise<DownloadedFile> {
+  return api.download(
+    `${ticketPath(ticketId)}/completion-files/${encodeURIComponent(fileId)}`,
+  );
 }
 
 export function downloadTicketExport(id: string): Promise<DownloadedFile> {
   return api.download(`${ticketPath(id)}/export`);
 }
 
-export function downloadOutgoingExport(filters: TicketListFilters): Promise<DownloadedFile> {
+export function downloadOutgoingExport(
+  filters: TicketListFilters,
+): Promise<DownloadedFile> {
   return api.download(withQuery("/tickets/outgoing/export", filters));
 }
 

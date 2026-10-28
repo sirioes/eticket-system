@@ -1,12 +1,16 @@
-import type { Divisi } from '@/types/auth.types';
+import type { Divisi } from "@/types/auth.types";
 
 export type TicketStage =
-  | 'MENUNGGU_MANAGER_ASAL' | 'MENUNGGU_MANAGER_TUJUAN'
-  | 'MENUNGGU_STAF_TUJUAN' | 'DIPROSES' | 'SELESAI' | 'DITOLAK';
+  | "MENUNGGU_MANAGER_ASAL"
+  | "MENUNGGU_MANAGER_TUJUAN"
+  | "MENUNGGU_STAF_TUJUAN"
+  | "DIPROSES"
+  | "SELESAI"
+  | "DITOLAK";
 
-export type StageAction = 'TERIMA' | 'TOLAK' | 'PROSES' | 'SELESAI';
+export type StageAction = "TERIMA" | "TOLAK" | "PROSES" | "SELESAI";
 
-export type TicketLogAction = 'DIBUAT' | StageAction;
+export type TicketLogAction = "DIBUAT" | StageAction;
 
 export interface TicketListFilters {
   search?: string;
@@ -99,9 +103,9 @@ export interface TicketDetail {
   canComment: boolean;
 }
 
-export type TicketMessageKind = 'KOMENTAR' | 'ALASAN';
+export type TicketMessageKind = "KOMENTAR" | "ALASAN";
 
-export type ReasonLabel = 'PENGAJUAN' | 'MENERIMA' | 'MENOLAK';
+export type ReasonLabel = "PENGAJUAN" | "MENERIMA" | "MENOLAK";
 
 export interface TicketMessage {
   id: string;

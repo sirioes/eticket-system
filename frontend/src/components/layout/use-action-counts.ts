@@ -14,7 +14,10 @@ export function refreshActionCounts(): void {
   window.dispatchEvent(new Event(REFRESH_EVENT));
 }
 
-export function useActionCounts(enabled: boolean, refreshKey: string): ActionCounts {
+export function useActionCounts(
+  enabled: boolean,
+  refreshKey: string,
+): ActionCounts {
   const [counts, setCounts] = useState<ActionCounts>(EMPTY);
 
   useEffect(() => {

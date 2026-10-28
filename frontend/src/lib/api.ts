@@ -1,7 +1,8 @@
 const BASE_URL = "/api";
 const FALLBACK_MESSAGE = "Terjadi kesalahan, silakan coba lagi";
 const NETWORK_MESSAGE = "Tidak dapat terhubung ke server";
-const THROTTLED_MESSAGE = "Terlalu banyak percobaan. Tunggu 1 menit, lalu coba lagi.";
+const THROTTLED_MESSAGE =
+  "Terlalu banyak percobaan. Tunggu 1 menit, lalu coba lagi.";
 
 export class ApiError extends Error {
   constructor(
@@ -20,7 +21,9 @@ function extractMessage(body: unknown): string {
   const { message } = body;
   if (typeof message === "string" && message.trim() !== "") return message;
   if (Array.isArray(message)) {
-    const first = message.find((item) => typeof item === "string" && item.trim() !== "");
+    const first = message.find(
+      (item) => typeof item === "string" && item.trim() !== "",
+    );
     if (typeof first === "string") return first;
   }
   return FALLBACK_MESSAGE;
@@ -29,7 +32,10 @@ function extractMessage(body: unknown): string {
 async function send(path: string, init: RequestInit): Promise<Response> {
   let res: Response;
   try {
-    res = await fetch(`${BASE_URL}${path}`, { ...init, credentials: "include" });
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...init,
+      credentials: "include",
+    });
   } catch {
     throw new ApiError(0, NETWORK_MESSAGE);
   }
@@ -79,8 +85,10 @@ function jsonInit(method: string, data?: unknown): RequestInit {
 
 export const api = {
   get: <T>(path: string) => request<T>(path, { method: "GET" }),
-  post: <T>(path: string, data?: unknown) => request<T>(path, jsonInit("POST", data)),
-  patch: <T>(path: string, data?: unknown) => request<T>(path, jsonInit("PATCH", data)),
+  post: <T>(path: string, data?: unknown) =>
+    request<T>(path, jsonInit("POST", data)),
+  patch: <T>(path: string, data?: unknown) =>
+    request<T>(path, jsonInit("PATCH", data)),
   upload: <T>(path: string, formData: FormData) =>
     request<T>(path, { method: "POST", body: formData }),
   download,

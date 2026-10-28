@@ -4,7 +4,10 @@ import { useId, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ModalDialog } from "@/components/ui/modal-dialog";
 import { PasswordInput } from "@/components/ui/password-input";
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "@/components/ui/button-class";
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/button-class";
 import { errorMessage, isUnauthorized } from "@/lib/api";
 import { MIN_PASSWORD_LENGTH } from "@/lib/user-rules";
 import { resetUserPassword } from "@/lib/users";
@@ -16,13 +19,19 @@ interface ResetPasswordDialogProps {
   onDone: (user: ManagedUser) => void;
 }
 
-export function ResetPasswordDialog({ user, onClose, onDone }: ResetPasswordDialogProps) {
+export function ResetPasswordDialog({
+  user,
+  onClose,
+  onDone,
+}: ResetPasswordDialogProps) {
   const router = useRouter();
   const ids = useId();
   const passwordRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ text: string; tick: number } | null>(null);
+  const [error, setError] = useState<{ text: string; tick: number } | null>(
+    null,
+  );
 
   function fail(text: string, field?: HTMLInputElement | null) {
     setError((current) => ({ text, tick: (current?.tick ?? 0) + 1 }));
@@ -35,7 +44,10 @@ export function ResetPasswordDialog({ user, onClose, onDone }: ResetPasswordDial
     const password = passwordRef.current?.value ?? "";
     const confirmation = confirmRef.current?.value ?? "";
     if (password.length < MIN_PASSWORD_LENGTH)
-      return fail(`Password baru minimal ${MIN_PASSWORD_LENGTH} karakter.`, passwordRef.current);
+      return fail(
+        `Password baru minimal ${MIN_PASSWORD_LENGTH} karakter.`,
+        passwordRef.current,
+      );
     if (password !== confirmation)
       return fail("Konfirmasi password tidak cocok.", confirmRef.current);
 
@@ -56,15 +68,29 @@ export function ResetPasswordDialog({ user, onClose, onDone }: ResetPasswordDial
 
   return (
     <ModalDialog titleId={`${ids}-title`} busy={busy} onClose={onClose}>
-      <form method="post" noValidate onSubmit={handleSubmit} className="flex flex-col gap-5 p-6 sm:p-8">
+      <form
+        method="post"
+        noValidate
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-5 p-6 sm:p-8"
+      >
         <div>
-          <p className="font-mono text-xs font-medium tracking-[0.2em] text-teal uppercase">Keamanan akun</p>
-          <h2 id={`${ids}-title`} className="mt-1 text-xl font-semibold tracking-tight">
+          <p className="font-mono text-xs font-medium tracking-[0.2em] text-teal uppercase">
+            Keamanan akun
+          </p>
+          <h2
+            id={`${ids}-title`}
+            className="mt-1 text-xl font-semibold tracking-tight"
+          >
             Reset password
           </h2>
           <p className="mt-2 text-sm text-ink/70">
-            Atur password baru untuk <span className="font-semibold text-ink wrap-break-word">{user.fullName}</span>.
-            Sesi akun ini langsung keluar, lalu pengguna perlu masuk dengan password baru.
+            Atur password baru untuk{" "}
+            <span className="font-semibold text-ink wrap-break-word">
+              {user.fullName}
+            </span>
+            . Sesi akun ini langsung keluar, lalu pengguna perlu masuk dengan
+            password baru.
           </p>
         </div>
 
@@ -98,10 +124,20 @@ export function ResetPasswordDialog({ user, onClose, onDone }: ResetPasswordDial
         />
 
         <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onClose} disabled={busy} className={SECONDARY_BUTTON_CLASS}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className={SECONDARY_BUTTON_CLASS}
+          >
             Batal
           </button>
-          <button type="submit" disabled={busy} aria-busy={busy} className={PRIMARY_BUTTON_CLASS}>
+          <button
+            type="submit"
+            disabled={busy}
+            aria-busy={busy}
+            className={PRIMARY_BUTTON_CLASS}
+          >
             {busy && (
               <span
                 aria-hidden="true"

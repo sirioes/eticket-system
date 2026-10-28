@@ -1,7 +1,12 @@
 import { DIVISI_LABEL } from "@/lib/labels";
-import type { TicketDetail, TicketStage, TicketTimelineEntry } from "@/types/ticket.types";
+import type {
+  TicketDetail,
+  TicketStage,
+  TicketTimelineEntry,
+} from "@/types/ticket.types";
 
-export type ProgressStepState = "done" | "rejected" | "current" | "upcoming" | "skipped";
+export type ProgressStepState =
+  "done" | "rejected" | "current" | "upcoming" | "skipped";
 
 export interface ProgressStep {
   title: string;
@@ -23,9 +28,21 @@ const PIPELINE: readonly (TicketStage | null)[] = [
   "DIPROSES",
 ];
 
-const DONE_NOTE = ["Dikirim", "Disetujui", "Diterima", "Mulai diproses", "Diselesaikan"];
+const DONE_NOTE = [
+  "Dikirim",
+  "Disetujui",
+  "Diterima",
+  "Mulai diproses",
+  "Diselesaikan",
+];
 
-const CURRENT_NOTE = ["", "Menunggu persetujuan", "Menunggu persetujuan", "Menunggu diproses", "Sedang dikerjakan"];
+const CURRENT_NOTE = [
+  "",
+  "Menunggu persetujuan",
+  "Menunggu persetujuan",
+  "Menunggu diproses",
+  "Sedang dikerjakan",
+];
 
 function rejectedPosition(ticket: ProgressTicket): number {
   const stage =
@@ -45,7 +62,11 @@ export function stageNumber(ticket: ProgressTicket): number {
   return currentPosition(ticket);
 }
 
-function stepState(index: number, position: number, rejected: boolean): ProgressStepState {
+function stepState(
+  index: number,
+  position: number,
+  rejected: boolean,
+): ProgressStepState {
   if (index < position) return "done";
   if (index === position) return rejected ? "rejected" : "current";
   return rejected ? "skipped" : "upcoming";
@@ -85,7 +106,8 @@ export function ticketProgress(ticket: ProgressTicket): ProgressStep[] {
       state,
       note: stepNote(index, state),
       entry: reached
-        ? (ticket.timeline.find((entry) => entry.fromStage === fromStage) ?? null)
+        ? (ticket.timeline.find((entry) => entry.fromStage === fromStage) ??
+          null)
         : null,
     };
   });

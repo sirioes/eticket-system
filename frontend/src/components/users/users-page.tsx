@@ -4,11 +4,17 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/layout/user-context";
 import { EmptyState } from "@/components/tickets/empty-state";
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "@/components/ui/button-class";
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/button-class";
 import { INPUT_CLASS } from "@/components/ui/input-class";
 import { SelectField } from "@/components/ui/select-field";
 import { ResetPasswordDialog } from "@/components/users/reset-password-dialog";
-import { UserFormDialog, type UserFormTarget } from "@/components/users/user-form-dialog";
+import {
+  UserFormDialog,
+  type UserFormTarget,
+} from "@/components/users/user-form-dialog";
 import { UserTable, type RowHighlight } from "@/components/users/user-table";
 import { errorMessage, isUnauthorized } from "@/lib/api";
 import { ROLE_LABEL, ROLES } from "@/lib/user-rules";
@@ -46,7 +52,9 @@ export function UsersPage() {
 
   const [formTarget, setFormTarget] = useState<UserFormTarget | null>(null);
   const [resetTarget, setResetTarget] = useState<ManagedUser | null>(null);
-  const [notice, setNotice] = useState<{ text: string; tick: number } | null>(null);
+  const [notice, setNotice] = useState<{ text: string; tick: number } | null>(
+    null,
+  );
   const [highlight, setHighlight] = useState<RowHighlight | null>(null);
 
   useEffect(() => {
@@ -62,14 +70,21 @@ export function UsersPage() {
           router.replace("/login?reason=expired");
           return;
         }
-        setLoad({ status: "error", key: requestKey, message: errorMessage(caught) });
+        setLoad({
+          status: "error",
+          key: requestKey,
+          message: errorMessage(caught),
+        });
       });
     return () => {
       active = false;
     };
   }, [isSuperadmin, router, requestKey]);
 
-  const allUsers = useMemo(() => (load.status === "ready" ? load.users : []), [load]);
+  const allUsers = useMemo(
+    () => (load.status === "ready" ? load.users : []),
+    [load],
+  );
 
   const visibleUsers = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -81,7 +96,8 @@ export function UsersPage() {
     );
   }, [allUsers, search, roleFilter, activeFilter]);
 
-  const filtered = search.trim() !== "" || roleFilter !== "" || activeFilter !== "";
+  const filtered =
+    search.trim() !== "" || roleFilter !== "" || activeFilter !== "";
 
   function announce(text: string) {
     setNotice((current) => ({ text, tick: (current?.tick ?? 0) + 1 }));
@@ -95,7 +111,10 @@ export function UsersPage() {
         : current.users.map((user) => (user.id === saved.id ? saved : user));
       return { ...current, users: users.sort(byName) };
     });
-    setHighlight((current) => ({ id: saved.id, tick: (current?.tick ?? 0) + 1 }));
+    setHighlight((current) => ({
+      id: saved.id,
+      tick: (current?.tick ?? 0) + 1,
+    }));
     setFormTarget(null);
     announce(
       created
@@ -106,7 +125,9 @@ export function UsersPage() {
 
   function handleResetDone(user: ManagedUser) {
     setResetTarget(null);
-    announce(`Password ${user.fullName} berhasil direset. Sesinya sudah keluar.`);
+    announce(
+      `Password ${user.fullName} berhasil direset. Sesinya sudah keluar.`,
+    );
   }
 
   function clearFilters() {
@@ -118,7 +139,9 @@ export function UsersPage() {
   if (!isSuperadmin) {
     return (
       <div className="animate-fade-up">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Kelola Akun</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          Kelola Akun
+        </h1>
         <p className="mt-6 rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
           Halaman ini hanya untuk superadmin.
         </p>
@@ -126,15 +149,19 @@ export function UsersPage() {
     );
   }
 
-  const showSpinner = load.status === "idle" || (load.status === "error" && !settled);
+  const showSpinner =
+    load.status === "idle" || (load.status === "error" && !settled);
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex animate-fade-up flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Kelola Akun</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Kelola Akun
+          </h1>
           <p className="mt-1 text-sm text-ink/70 sm:text-base">
-            Tambah akun, ubah role dan divisi, nonaktifkan akun, atau reset password.
+            Tambah akun, ubah role dan divisi, nonaktifkan akun, atau reset
+            password.
           </p>
         </div>
         <button
@@ -205,7 +232,9 @@ export function UsersPage() {
             id={`${ids}-status`}
             label="Status"
             value={activeFilter}
-            onChange={(event) => setActiveFilter(event.target.value as ActiveFilter)}
+            onChange={(event) =>
+              setActiveFilter(event.target.value as ActiveFilter)
+            }
           >
             <option value="">Semua status</option>
             <option value="active">Aktif</option>
@@ -240,16 +269,30 @@ export function UsersPage() {
         )}
 
         {load.status === "ready" && visibleUsers.length === 0 && filtered && (
-          <EmptyState eyebrow="Tidak ada hasil" message="Tidak ada akun yang cocok dengan pencarian atau filter.">
-            <button type="button" onClick={clearFilters} className={`${SECONDARY_BUTTON_CLASS} border border-ink/15`}>
+          <EmptyState
+            eyebrow="Tidak ada hasil"
+            message="Tidak ada akun yang cocok dengan pencarian atau filter."
+          >
+            <button
+              type="button"
+              onClick={clearFilters}
+              className={`${SECONDARY_BUTTON_CLASS} border border-ink/15`}
+            >
               Hapus pencarian dan filter
             </button>
           </EmptyState>
         )}
 
         {load.status === "ready" && allUsers.length === 0 && !filtered && (
-          <EmptyState eyebrow="Masih kosong" message="Belum ada akun yang terdaftar.">
-            <button type="button" onClick={() => setFormTarget({ kind: "create" })} className={PRIMARY_BUTTON_CLASS}>
+          <EmptyState
+            eyebrow="Masih kosong"
+            message="Belum ada akun yang terdaftar."
+          >
+            <button
+              type="button"
+              onClick={() => setFormTarget({ kind: "create" })}
+              className={PRIMARY_BUTTON_CLASS}
+            >
               Tambah akun
             </button>
           </EmptyState>
@@ -266,8 +309,15 @@ export function UsersPage() {
             />
             <footer className="border-t border-ink/10 pt-4">
               <p className="text-sm text-ink/70" aria-live="polite">
-                Menampilkan <span className="font-mono font-semibold text-ink">{visibleUsers.length}</span> dari{" "}
-                <span className="font-mono font-semibold text-ink">{allUsers.length}</span> akun
+                Menampilkan{" "}
+                <span className="font-mono font-semibold text-ink">
+                  {visibleUsers.length}
+                </span>{" "}
+                dari{" "}
+                <span className="font-mono font-semibold text-ink">
+                  {allUsers.length}
+                </span>{" "}
+                akun
               </p>
             </footer>
           </div>

@@ -24,7 +24,13 @@ interface TabListProps {
   onChange: (id: string) => void;
 }
 
-export function TabList({ idPrefix, label, tabs, active, onChange }: TabListProps) {
+export function TabList({
+  idPrefix,
+  label,
+  tabs,
+  active,
+  onChange,
+}: TabListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
@@ -32,7 +38,9 @@ export function TabList({ idPrefix, label, tabs, active, onChange }: TabListProp
     const list = listRef.current;
     const tab = tabRefs.current.get(active);
     if (!list || !tab) return;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     list.scrollTo({
       left: tab.offsetLeft - (list.clientWidth - tab.offsetWidth) / 2,
       behavior: reduceMotion ? "auto" : "smooth",

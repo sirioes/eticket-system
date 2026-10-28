@@ -8,7 +8,10 @@ export interface VisualViewportBox {
 }
 
 function read(viewport: VisualViewport): VisualViewportBox {
-  return { height: Math.round(viewport.height), offsetTop: Math.round(viewport.offsetTop) };
+  return {
+    height: Math.round(viewport.height),
+    offsetTop: Math.round(viewport.offsetTop),
+  };
 }
 
 export function useVisualViewport(enabled: boolean): VisualViewportBox | null {

@@ -8,8 +8,14 @@ import { EmptyState } from "@/components/tickets/empty-state";
 import { ExportButton } from "@/components/tickets/export-button";
 import { TicketListToolbar } from "@/components/tickets/ticket-list-toolbar";
 import { TicketPagination } from "@/components/tickets/ticket-pagination";
-import { TicketTable, type TicketDirection } from "@/components/tickets/ticket-table";
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "@/components/ui/button-class";
+import {
+  TicketTable,
+  type TicketDirection,
+} from "@/components/tickets/ticket-table";
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/button-class";
 import { errorMessage, isUnauthorized } from "@/lib/api";
 import { DIVISI_LABEL } from "@/lib/labels";
 import {
@@ -27,11 +33,18 @@ const ALL_DIVISI = Object.keys(DIVISI_LABEL) as Divisi[];
 
 const COPY: Record<
   TicketDirection,
-  { title: string; subtitle: string; divisiLabel: string; empty: string; emptyHint: string }
+  {
+    title: string;
+    subtitle: string;
+    divisiLabel: string;
+    empty: string;
+    emptyHint: string;
+  }
 > = {
   outgoing: {
     title: "Pengaduan Keluar",
-    subtitle: "Pengaduan yang diajukan divisimu ke divisi lain beserta statusnya.",
+    subtitle:
+      "Pengaduan yang diajukan divisimu ke divisi lain beserta statusnya.",
     divisiLabel: "Divisi tujuan",
     empty: "Divisimu belum mengajukan pengaduan.",
     emptyHint: "Pengaduan yang kamu kirim ke divisi lain akan muncul di sini.",
@@ -41,7 +54,8 @@ const COPY: Record<
     subtitle: "Pengaduan dari divisi lain yang ditujukan ke divisimu.",
     divisiLabel: "Divisi asal",
     empty: "Belum ada pengaduan masuk ke divisimu.",
-    emptyHint: "Pengaduan dari divisi lain akan muncul di sini setelah disetujui manajer asalnya.",
+    emptyHint:
+      "Pengaduan dari divisi lain akan muncul di sini setelah disetujui manajer asalnya.",
   },
 };
 
@@ -58,7 +72,10 @@ export function TicketListPage({ direction }: { direction: TicketDirection }) {
   const copy = COPY[direction];
 
   const query = searchParams.toString();
-  const state = useMemo(() => readTicketListState(new URLSearchParams(query)), [query]);
+  const state = useMemo(
+    () => readTicketListState(new URLSearchParams(query)),
+    [query],
+  );
   const stateKey = writeTicketListState(state);
 
   const [attempt, setAttempt] = useState(0);
@@ -69,7 +86,8 @@ export function TicketListPage({ direction }: { direction: TicketDirection }) {
   useEffect(() => {
     if (user.divisi === null) return;
     let active = true;
-    const fetchList = direction === "outgoing" ? listOutgoingTickets : listIncomingTickets;
+    const fetchList =
+      direction === "outgoing" ? listOutgoingTickets : listIncomingTickets;
     fetchList({ ...state.filters, page: state.page, limit: TICKET_PAGE_SIZE })
       .then((data) => {
         if (active) setLoad({ status: "ready", key: requestKey, data });
@@ -80,7 +98,11 @@ export function TicketListPage({ direction }: { direction: TicketDirection }) {
           router.replace("/login?reason=expired");
           return;
         }
-        setLoad({ status: "error", key: requestKey, message: errorMessage(caught) });
+        setLoad({
+          status: "error",
+          key: requestKey,
+          message: errorMessage(caught),
+        });
       });
     return () => {
       active = false;
@@ -88,11 +110,14 @@ export function TicketListPage({ direction }: { direction: TicketDirection }) {
   }, [direction, router, state, requestKey, user.divisi]);
 
   const refreshing = load.status === "ready" && !settled;
-  const showSpinner = load.status === "idle" || (load.status === "error" && !settled);
+  const showSpinner =
+    load.status === "idle" || (load.status === "error" && !settled);
 
   function navigate(next: TicketListState) {
     const search = writeTicketListState(next);
-    router.push(search === "" ? pathname : `${pathname}?${search}`, { scroll: false });
+    router.push(search === "" ? pathname : `${pathname}?${search}`, {
+      scroll: false,
+    });
   }
 
   function applyFilters(filters: TicketListFilters) {
@@ -102,7 +127,9 @@ export function TicketListPage({ direction }: { direction: TicketDirection }) {
   if (user.divisi === null) {
     return (
       <div className="animate-fade-up">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{copy.title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          {copy.title}
+        </h1>
         <p className="mt-6 rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
           Halaman ini hanya untuk akun yang terdaftar di sebuah divisi.
         </p>
@@ -118,8 +145,12 @@ export function TicketListPage({ direction }: { direction: TicketDirection }) {
     <div className="flex flex-col gap-6">
       <header className="flex animate-fade-up flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{copy.title}</h1>
-          <p className="mt-1 text-sm text-ink/70 sm:text-base">{copy.subtitle}</p>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            {copy.title}
+          </h1>
+          <p className="mt-1 text-sm text-ink/70 sm:text-base">
+            {copy.subtitle}
+          </p>
         </div>
         {direction === "outgoing" && <ExportButton filters={state.filters} />}
       </header>
@@ -147,7 +178,10 @@ export function TicketListPage({ direction }: { direction: TicketDirection }) {
         )}
 
         {load.status === "error" && settled && (
-          <div role="alert" className="flex animate-fade-in flex-col items-start gap-3 rounded-xl bg-red/10 px-4 py-3 text-sm text-wine sm:flex-row sm:items-center sm:justify-between">
+          <div
+            role="alert"
+            className="flex animate-fade-in flex-col items-start gap-3 rounded-xl bg-red/10 px-4 py-3 text-sm text-wine sm:flex-row sm:items-center sm:justify-between"
+          >
             <p className="font-medium">{load.message}</p>
             <button
               type="button"
@@ -159,17 +193,22 @@ export function TicketListPage({ direction }: { direction: TicketDirection }) {
           </div>
         )}
 
-        {load.status === "ready" && load.data.items.length === 0 && load.data.total > 0 && (
-          <EmptyState eyebrow="Halaman kosong" message="Halaman ini melewati jumlah halaman yang ada.">
-            <button
-              type="button"
-              onClick={() => navigate({ filters: state.filters, page: 1 })}
-              className={PRIMARY_BUTTON_CLASS}
+        {load.status === "ready" &&
+          load.data.items.length === 0 &&
+          load.data.total > 0 && (
+            <EmptyState
+              eyebrow="Halaman kosong"
+              message="Halaman ini melewati jumlah halaman yang ada."
             >
-              Ke halaman pertama
-            </button>
-          </EmptyState>
-        )}
+              <button
+                type="button"
+                onClick={() => navigate({ filters: state.filters, page: 1 })}
+                className={PRIMARY_BUTTON_CLASS}
+              >
+                Ke halaman pertama
+              </button>
+            </EmptyState>
+          )}
 
         {load.status === "ready" && load.data.total === 0 && filtered && (
           <EmptyState
@@ -211,8 +250,14 @@ export function TicketListPage({ direction }: { direction: TicketDirection }) {
             <footer className="flex flex-col gap-4 border-t border-ink/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-ink/70" aria-live="polite">
                 Menampilkan{" "}
-                <span className="font-mono font-semibold text-ink">{load.data.items.length}</span> dari{" "}
-                <span className="font-mono font-semibold text-ink">{load.data.total}</span> data pengaduan
+                <span className="font-mono font-semibold text-ink">
+                  {load.data.items.length}
+                </span>{" "}
+                dari{" "}
+                <span className="font-mono font-semibold text-ink">
+                  {load.data.total}
+                </span>{" "}
+                data pengaduan
               </p>
               <TicketPagination
                 page={load.data.page}

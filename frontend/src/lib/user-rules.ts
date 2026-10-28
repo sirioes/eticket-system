@@ -14,7 +14,9 @@ export const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
 const ALL_DIVISI = Object.keys(DIVISI_LABEL) as Divisi[];
 
-export const NON_FINANCE_DIVISI = ALL_DIVISI.filter((divisi) => divisi !== "FINANCE");
+export const NON_FINANCE_DIVISI = ALL_DIVISI.filter(
+  (divisi) => divisi !== "FINANCE",
+);
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -29,13 +31,19 @@ export type DivisiRule =
 
 export function divisiRuleFor(role: Role): DivisiRule {
   if (role === "SUPERADMIN") return { kind: "none" };
-  if (role === "FINANCE_MAIN_OFFICE" || role === "FINANCE_MANAGER_MAIN_OFFICE") {
+  if (
+    role === "FINANCE_MAIN_OFFICE" ||
+    role === "FINANCE_MANAGER_MAIN_OFFICE"
+  ) {
     return { kind: "fixed", divisi: "FINANCE" };
   }
   return { kind: "choose", options: NON_FINANCE_DIVISI };
 }
 
-export function divisiAfterRoleChange(role: Role, current: Divisi | null): Divisi | null {
+export function divisiAfterRoleChange(
+  role: Role,
+  current: Divisi | null,
+): Divisi | null {
   const rule = divisiRuleFor(role);
   if (rule.kind === "none") return null;
   if (rule.kind === "fixed") return rule.divisi;
@@ -43,7 +51,9 @@ export function divisiAfterRoleChange(role: Role, current: Divisi | null): Divis
 }
 
 export function isManagerRole(role: Role): boolean {
-  return role === "MANAGER_MAIN_OFFICE" || role === "FINANCE_MANAGER_MAIN_OFFICE";
+  return (
+    role === "MANAGER_MAIN_OFFICE" || role === "FINANCE_MANAGER_MAIN_OFFICE"
+  );
 }
 
 export function managerWarning(
@@ -51,7 +61,8 @@ export function managerWarning(
   next: { role: Role; divisi: Divisi | null; isActive: boolean },
   users: ManagedUser[],
 ): string | null {
-  if (!target.isActive || !isManagerRole(target.role) || target.divisi === null) return null;
+  if (!target.isActive || !isManagerRole(target.role) || target.divisi === null)
+    return null;
   const stillCovers =
     next.isActive && next.role === target.role && next.divisi === target.divisi;
   if (stillCovers) return null;

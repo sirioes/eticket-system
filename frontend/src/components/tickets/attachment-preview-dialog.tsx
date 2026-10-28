@@ -44,7 +44,13 @@ interface AttachmentPreviewDialogProps {
   onClose: () => void;
 }
 
-export function AttachmentPreviewDialog({ ticketId, source, file, kind, onClose }: AttachmentPreviewDialogProps) {
+export function AttachmentPreviewDialog({
+  ticketId,
+  source,
+  file,
+  kind,
+  onClose,
+}: AttachmentPreviewDialogProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [preview, setPreview] = useState<PreviewState>({ status: "loading" });
@@ -57,7 +63,8 @@ export function AttachmentPreviewDialog({ ticketId, source, file, kind, onClose 
   useEffect(() => {
     let active = true;
     let url: string | null = null;
-    const load = source === "completion" ? downloadCompletionFile : downloadAttachment;
+    const load =
+      source === "completion" ? downloadCompletionFile : downloadAttachment;
     load(ticketId, file.id)
       .then(({ blob }) => {
         if (!active) return;
@@ -98,7 +105,9 @@ export function AttachmentPreviewDialog({ ticketId, source, file, kind, onClose 
             <h2 id="preview-title" className="font-semibold wrap-break-word">
               {file.fileName}
             </h2>
-            <p className="mt-0.5 font-mono text-xs text-ink/70">{formatFileSize(file.size)}</p>
+            <p className="mt-0.5 font-mono text-xs text-ink/70">
+              {formatFileSize(file.size)}
+            </p>
           </div>
           <button
             type="button"
@@ -106,7 +115,15 @@ export function AttachmentPreviewDialog({ ticketId, source, file, kind, onClose 
             aria-label="Tutup pratinjau"
             className="grid size-10 shrink-0 place-items-center rounded-xl text-ink transition-[background-color,transform] duration-200 ease-spring hover:bg-ink/5 active:scale-95"
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="size-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
               <path d="M6 6l12 12M18 6 6 18" />
             </svg>
           </button>
@@ -122,7 +139,10 @@ export function AttachmentPreviewDialog({ ticketId, source, file, kind, onClose 
           )}
 
           {preview.status === "error" && (
-            <p role="alert" className="m-4 rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
+            <p
+              role="alert"
+              className="m-4 rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine"
+            >
               {preview.message}
             </p>
           )}
@@ -151,12 +171,17 @@ export function AttachmentPreviewDialog({ ticketId, source, file, kind, onClose 
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-ink/70">
-            {kind === "pdf" ? "PDF tidak tampil pada perangkat Anda? Unduh file untuk membukanya." : ""}
+            {kind === "pdf"
+              ? "PDF tidak tampil pada perangkat Anda? Unduh file untuk membukanya."
+              : ""}
           </p>
           <button
             type="button"
             disabled={preview.status !== "ready"}
-            onClick={() => preview.status === "ready" && saveBlob(preview.blob, file.fileName)}
+            onClick={() =>
+              preview.status === "ready" &&
+              saveBlob(preview.blob, file.fileName)
+            }
             className={`${OUTLINE_BUTTON_CLASS} h-11 px-5 text-sm`}
           >
             Unduh

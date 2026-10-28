@@ -44,7 +44,10 @@ export function isValidDateRange(dateFrom?: string, dateTo?: string): boolean {
   return dateFrom === undefined || dateTo === undefined || dateFrom <= dateTo;
 }
 
-function pick<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
+function pick<T extends string>(
+  value: string | null,
+  allowed: readonly T[],
+): T | undefined {
   return allowed.find((candidate) => candidate === value);
 }
 
@@ -58,7 +61,9 @@ export function readTicketListState(params: ReadableParams): TicketListState {
   const dateTo = pickDate(params.get("dateTo"));
   const rawPage = Number(params.get("page"));
   const page =
-    Number.isInteger(rawPage) && rawPage >= 1 && rawPage <= MAX_TICKET_PAGE ? rawPage : 1;
+    Number.isInteger(rawPage) && rawPage >= 1 && rawPage <= MAX_TICKET_PAGE
+      ? rawPage
+      : 1;
   const rangeIsValid = isValidDateRange(dateFrom, dateTo);
 
   return {
@@ -86,9 +91,11 @@ export function writeTicketListState(state: TicketListState): string {
 }
 
 export function activeFilterCount(filters: TicketListFilters): number {
-  return [filters.status, filters.divisi, filters.dateFrom ?? filters.dateTo].filter(
-    (value) => value !== undefined,
-  ).length;
+  return [
+    filters.status,
+    filters.divisi,
+    filters.dateFrom ?? filters.dateTo,
+  ].filter((value) => value !== undefined).length;
 }
 
 export function hasAnyFilter(filters: TicketListFilters): boolean {
@@ -101,7 +108,9 @@ export function pageSlots(current: number, total: number): PageSlot[] {
   if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
 
   const pages = new Set([1, total, current - 1, current, current + 1]);
-  const sorted = [...pages].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b);
+  const sorted = [...pages]
+    .filter((page) => page >= 1 && page <= total)
+    .sort((a, b) => a - b);
 
   const slots: PageSlot[] = [];
   for (const page of sorted) {

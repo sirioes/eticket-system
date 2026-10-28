@@ -63,7 +63,10 @@ export function ExportButton({ filters }: { filters: TicketListFilters }) {
         {busy ? "Menyiapkan file…" : "Unduh Excel"}
       </button>
       {error && (
-        <p role="alert" className="max-w-xs animate-shake text-sm text-wine sm:text-right">
+        <p
+          role="alert"
+          className="max-w-xs animate-shake text-sm text-wine sm:text-right"
+        >
           {error}
         </p>
       )}

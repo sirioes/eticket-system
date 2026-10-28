@@ -14,8 +14,15 @@ import { errorMessage, isUnauthorized, type DownloadedFile } from "@/lib/api";
 import { addFiles, formatFileSize } from "@/lib/attachment-files";
 import { saveBlob } from "@/lib/download";
 import { DIVISI_LABEL } from "@/lib/labels";
-import { MAX_ATTACHMENTS_PER_TICKET, MAX_COMPLETION_FILES } from "@/lib/ticket-rules";
-import { downloadAttachment, downloadCompletionFile, uploadAttachment } from "@/lib/tickets";
+import {
+  MAX_ATTACHMENTS_PER_TICKET,
+  MAX_COMPLETION_FILES,
+} from "@/lib/ticket-rules";
+import {
+  downloadAttachment,
+  downloadCompletionFile,
+  uploadAttachment,
+} from "@/lib/tickets";
 import type { TicketAttachment, TicketDetail } from "@/types/ticket.types";
 
 interface Previewing {
@@ -42,7 +49,11 @@ interface TicketFilesProps {
   onChanged: () => void;
 }
 
-export function TicketFiles({ ticket, refreshing, onChanged }: TicketFilesProps) {
+export function TicketFiles({
+  ticket,
+  refreshing,
+  onChanged,
+}: TicketFilesProps) {
   const router = useRouter();
   const [previewing, setPreviewing] = useState<Previewing | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -52,14 +63,20 @@ export function TicketFiles({ ticket, refreshing, onChanged }: TicketFilesProps)
   const [uploading, setUploading] = useState(false);
   const [report, setReport] = useState<UploadReport | null>(null);
 
-  const remaining = Math.max(0, MAX_ATTACHMENTS_PER_TICKET - ticket.attachments.length);
+  const remaining = Math.max(
+    0,
+    MAX_ATTACHMENTS_PER_TICKET - ticket.attachments.length,
+  );
   const canUpload = ticket.canUploadAttachment && remaining > 0;
 
   function expire() {
     router.replace("/login?reason=expired");
   }
 
-  async function handleDownload(file: { id: string; fileName: string }, load: () => Promise<DownloadedFile>) {
+  async function handleDownload(
+    file: { id: string; fileName: string },
+    load: () => Promise<DownloadedFile>,
+  ) {
     if (downloading) return;
     setDownloading(file.id);
     setDownloadError(null);
@@ -142,21 +159,39 @@ export function TicketFiles({ ticket, refreshing, onChanged }: TicketFilesProps)
                   meta={formatFileSize(attachment.size)}
                   downloading={downloading === attachment.id}
                   downloadDisabled={downloading !== null}
-                  onPreview={(kind) => setPreviewing({ source: "attachment", file: attachment, kind })}
-                  onDownload={() => void handleDownload(attachment, () => downloadAttachment(ticket.id, attachment.id))}
+                  onPreview={(kind) =>
+                    setPreviewing({
+                      source: "attachment",
+                      file: attachment,
+                      kind,
+                    })
+                  }
+                  onDownload={() =>
+                    void handleDownload(attachment, () =>
+                      downloadAttachment(ticket.id, attachment.id),
+                    )
+                  }
                 />
               ))}
             </ul>
           )}
 
           {report && report.uploaded > 0 && (
-            <p role="status" className="animate-pop-in rounded-xl bg-green/15 px-4 py-3 text-sm font-medium text-ink">
+            <p
+              role="status"
+              className="animate-pop-in rounded-xl bg-green/15 px-4 py-3 text-sm font-medium text-ink"
+            >
               {report.uploaded} dokumen pengaduan berhasil diunggah.
             </p>
           )}
           {report && report.failures.length > 0 && (
-            <div role="alert" className="animate-shake rounded-xl bg-red/10 px-4 py-3 text-sm text-wine">
-              <p className="font-medium">Dokumen pengaduan berikut gagal diunggah:</p>
+            <div
+              role="alert"
+              className="animate-shake rounded-xl bg-red/10 px-4 py-3 text-sm text-wine"
+            >
+              <p className="font-medium">
+                Dokumen pengaduan berikut gagal diunggah:
+              </p>
               <ul className="mt-2 list-disc pl-5">
                 {report.failures.map((failure, index) => (
                   <li key={index} className="wrap-break-word">
@@ -170,10 +205,13 @@ export function TicketFiles({ ticket, refreshing, onChanged }: TicketFilesProps)
           {canUpload && (
             <div className="flex flex-col gap-4 pt-2">
               <div>
-                <h3 className="text-sm font-semibold">Tambah dokumen pengaduan</h3>
+                <h3 className="text-sm font-semibold">
+                  Tambah dokumen pengaduan
+                </h3>
                 <p className="mt-1 text-sm text-ink/70">
-                  Dokumen masih bisa ditambahkan sampai manajer Divisi {DIVISI_LABEL[ticket.fromDivisi]}{" "}
-                  menyetujui pengaduan. Sisa {remaining} file.
+                  Dokumen masih bisa ditambahkan sampai manajer Divisi{" "}
+                  {DIVISI_LABEL[ticket.fromDivisi]} menyetujui pengaduan. Sisa{" "}
+                  {remaining} file.
                 </p>
               </div>
               <AttachmentDropzone
@@ -194,7 +232,10 @@ export function TicketFiles({ ticket, refreshing, onChanged }: TicketFilesProps)
                   className={`${PRIMARY_BUTTON_CLASS} self-end`}
                 >
                   {uploading && (
-                    <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist" />
+                    <span
+                      aria-hidden="true"
+                      className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist"
+                    />
                   )}
                   {uploading ? "Mengunggah…" : `Unggah ${files.length} dokumen`}
                 </button>
@@ -225,8 +266,14 @@ export function TicketFiles({ ticket, refreshing, onChanged }: TicketFilesProps)
                   meta={formatFileSize(file.size)}
                   downloading={downloading === file.id}
                   downloadDisabled={downloading !== null}
-                  onPreview={(kind) => setPreviewing({ source: "completion", file, kind })}
-                  onDownload={() => void handleDownload(file, () => downloadCompletionFile(ticket.id, file.id))}
+                  onPreview={(kind) =>
+                    setPreviewing({ source: "completion", file, kind })
+                  }
+                  onDownload={() =>
+                    void handleDownload(file, () =>
+                      downloadCompletionFile(ticket.id, file.id),
+                    )
+                  }
                 />
               ))}
             </ul>
@@ -235,7 +282,10 @@ export function TicketFiles({ ticket, refreshing, onChanged }: TicketFilesProps)
       </div>
 
       {downloadError && (
-        <p role="alert" className="animate-shake rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine wrap-break-word">
+        <p
+          role="alert"
+          className="animate-shake rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine wrap-break-word"
+        >
           {downloadError}
         </p>
       )}

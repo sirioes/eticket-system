@@ -7,7 +7,10 @@ import { RecentTicketsTable } from "@/components/dashboard/recent-tickets-table"
 import { StatCards } from "@/components/dashboard/stat-cards";
 import { useUser } from "@/components/layout/user-context";
 import { EmptyState } from "@/components/tickets/empty-state";
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "@/components/ui/button-class";
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/button-class";
 import { errorMessage, isUnauthorized } from "@/lib/api";
 import { getRecentTickets, getTicketStats } from "@/lib/tickets";
 import type { TicketListItem, TicketStats } from "@/types/ticket.types";
@@ -15,7 +18,12 @@ import type { TicketListItem, TicketStats } from "@/types/ticket.types";
 type LoadState =
   | { status: "idle"; key: null }
   | { status: "error"; key: string; message: string }
-  | { status: "ready"; key: string; stats: TicketStats; recent: TicketListItem[] };
+  | {
+      status: "ready";
+      key: string;
+      stats: TicketStats;
+      recent: TicketListItem[];
+    };
 
 const SECTION_CLASS =
   "animate-fade-up rounded-3xl bg-mist p-4 shadow-[0_24px_60px_-28px_color-mix(in_oklab,var(--color-ink)_35%,transparent)] sm:p-6 lg:p-8";
@@ -23,7 +31,9 @@ const SECTION_CLASS =
 function Heading() {
   return (
     <header className="animate-fade-up">
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Dashboard</h1>
+      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        Dashboard
+      </h1>
       <p className="mt-1 text-sm text-ink/70 sm:text-base">
         Pantau pengaduan keluar dan masuk divisimu di sini.
       </p>
@@ -44,7 +54,8 @@ export function DashboardPage() {
     let active = true;
     Promise.all([getTicketStats(), getRecentTickets()])
       .then(([stats, recent]) => {
-        if (active) setLoad({ status: "ready", key: requestKey, stats, recent });
+        if (active)
+          setLoad({ status: "ready", key: requestKey, stats, recent });
       })
       .catch((caught: unknown) => {
         if (!active) return;
@@ -52,7 +63,11 @@ export function DashboardPage() {
           router.replace("/login?reason=expired");
           return;
         }
-        setLoad({ status: "error", key: requestKey, message: errorMessage(caught) });
+        setLoad({
+          status: "error",
+          key: requestKey,
+          message: errorMessage(caught),
+        });
       });
     return () => {
       active = false;
@@ -65,9 +80,12 @@ export function DashboardPage() {
         <Heading />
         <section className="grid min-h-48 animate-fade-up place-items-center rounded-3xl border-2 border-dashed border-teal/25 bg-mist/60 p-8 text-center [animation-delay:80ms]">
           <div>
-            <p className="font-mono text-xs tracking-[0.2em] text-teal uppercase">Akun superadmin</p>
+            <p className="font-mono text-xs tracking-[0.2em] text-teal uppercase">
+              Akun superadmin
+            </p>
             <p className="mt-2 max-w-sm text-sm text-ink/70">
-              Akun ini tidak terikat pada divisi, jadi ringkasan pengaduan per divisi tidak ditampilkan.
+              Akun ini tidak terikat pada divisi, jadi ringkasan pengaduan per
+              divisi tidak ditampilkan.
             </p>
           </div>
         </section>
@@ -111,9 +129,14 @@ export function DashboardPage() {
         <>
           <StatCards stats={load.stats} />
 
-          <section aria-label="Pengaduan terbaru" className={`${SECTION_CLASS} [animation-delay:280ms]`}>
+          <section
+            aria-label="Pengaduan terbaru"
+            className={`${SECTION_CLASS} [animation-delay:280ms]`}
+          >
             <div className="mb-6 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold tracking-tight sm:text-xl">Pengaduan Terbaru</h2>
+              <h2 className="text-lg font-semibold tracking-tight sm:text-xl">
+                Pengaduan Terbaru
+              </h2>
               {load.recent.length > 0 && (
                 <span className="animate-pop-in rounded-full bg-ink px-3 py-1 font-mono text-xs font-semibold text-mist">
                   {load.recent.length} teratas
@@ -131,7 +154,10 @@ export function DashboardPage() {
                 </Link>
               </EmptyState>
             ) : (
-              <RecentTicketsTable items={load.recent} viewerDivisi={viewerDivisi} />
+              <RecentTicketsTable
+                items={load.recent}
+                viewerDivisi={viewerDivisi}
+              />
             )}
           </section>
         </>

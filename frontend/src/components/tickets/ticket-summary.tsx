@@ -4,13 +4,19 @@ import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { refreshActionCounts } from "@/components/layout/use-action-counts";
 import { CompleteDialog } from "@/components/tickets/complete-dialog";
-import { ReasonDialog, type ReasonAction } from "@/components/tickets/reason-dialog";
+import {
+  ReasonDialog,
+  type ReasonAction,
+} from "@/components/tickets/reason-dialog";
 import { TicketExportButton } from "@/components/tickets/ticket-export-button";
 import { TicketStatCard } from "@/components/tickets/ticket-stat-card";
 import { CARD_SURFACE_CLASS } from "@/components/ui/card-class";
 import { ApiError, errorMessage, isUnauthorized } from "@/lib/api";
 import { DIVISI_LABEL, STAGE_ACTION_LABEL } from "@/lib/labels";
-import { MAX_ATTACHMENTS_PER_TICKET, MAX_COMPLETION_FILES } from "@/lib/ticket-rules";
+import {
+  MAX_ATTACHMENTS_PER_TICKET,
+  MAX_COMPLETION_FILES,
+} from "@/lib/ticket-rules";
 import { stageNumber } from "@/lib/ticket-progress";
 import { advanceTicketStage, completeTicket } from "@/lib/tickets";
 import type { StageAction, TicketDetail } from "@/types/ticket.types";
@@ -35,7 +41,15 @@ const DANGER_BUTTON_CLASS =
 
 function StatIcon({ children }: { children: ReactNode }) {
   return (
-    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       {children}
     </svg>
   );
@@ -89,7 +103,8 @@ function actionCopy(ticket: TicketDetail, action: StageAction): ActionCopy {
     case "TOLAK":
       return {
         title: "Tolak pengaduan ini?",
-        description: "Penolakan bersifat permanen. Pengaduan akan ditutup dengan status Ditolak dan tidak dapat diproses lagi.",
+        description:
+          "Penolakan bersifat permanen. Pengaduan akan ditutup dengan status Ditolak dan tidak dapat diproses lagi.",
         confirm: "Ya, tolak",
         success: "Pengaduan ditolak.",
       };
@@ -116,7 +131,11 @@ interface TicketSummaryProps {
   onChanged: () => void;
 }
 
-export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryProps) {
+export function TicketSummary({
+  ticket,
+  refreshing,
+  onChanged,
+}: TicketSummaryProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState<StageAction | null>(null);
@@ -178,7 +197,8 @@ export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryPr
   }
 
   function confirm() {
-    if (pending && copy) void run(() => advanceTicketStage(ticket.id, pending), copy.success);
+    if (pending && copy)
+      void run(() => advanceTicketStage(ticket.id, pending), copy.success);
   }
 
   return (
@@ -188,12 +208,18 @@ export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryPr
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <p className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">Detail pengaduan</p>
-          <h1 id="summary-title" className="font-mono text-xl font-semibold tracking-tight wrap-break-word sm:text-2xl">
+          <p className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">
+            Detail pengaduan
+          </p>
+          <h1
+            id="summary-title"
+            className="font-mono text-xl font-semibold tracking-tight wrap-break-word sm:text-2xl"
+          >
             {ticket.id}
           </h1>
           <p className="text-sm text-ink/70">
-            Dari Divisi {DIVISI_LABEL[ticket.fromDivisi]} ke Divisi {DIVISI_LABEL[ticket.toDivisi]}
+            Dari Divisi {DIVISI_LABEL[ticket.fromDivisi]} ke Divisi{" "}
+            {DIVISI_LABEL[ticket.toDivisi]}
           </p>
         </div>
 
@@ -204,7 +230,9 @@ export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryPr
               type="button"
               disabled={busy || refreshing}
               onClick={() => open(action)}
-              className={action === "TOLAK" ? DANGER_BUTTON_CLASS : PROCEED_BUTTON_CLASS}
+              className={
+                action === "TOLAK" ? DANGER_BUTTON_CLASS : PROCEED_BUTTON_CLASS
+              }
             >
               {STAGE_ACTION_LABEL[action]}
             </button>
@@ -218,18 +246,31 @@ export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryPr
       </div>
 
       {notice?.tone === "success" && (
-        <p key={notice.message} role="status" className="animate-pop-in rounded-xl bg-green/15 px-4 py-3 text-sm font-medium text-ink">
+        <p
+          key={notice.message}
+          role="status"
+          className="animate-pop-in rounded-xl bg-green/15 px-4 py-3 text-sm font-medium text-ink"
+        >
           {notice.message}
         </p>
       )}
       {notice?.tone === "error" && (
-        <p key={notice.message} role="alert" className="animate-shake rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
+        <p
+          key={notice.message}
+          role="alert"
+          className="animate-shake rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine"
+        >
           {notice.message}
         </p>
       )}
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <TicketStatCard icon={<StepsIcon />} label="Tahap persetujuan" value={stageNumber(ticket)} unit="/5 tahap" />
+        <TicketStatCard
+          icon={<StepsIcon />}
+          label="Tahap persetujuan"
+          value={stageNumber(ticket)}
+          unit="/5 tahap"
+        />
         <TicketStatCard
           icon={<FileIcon />}
           label="Dokumen Pengaduan"
@@ -257,8 +298,13 @@ export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryPr
             <h2 id="stage-dialog-title" className="text-lg font-semibold">
               {copy.title}
             </h2>
-            <p className="mt-1 font-mono text-sm font-semibold wrap-break-word">{ticket.id}</p>
-            <p id="stage-dialog-description" className="mt-3 text-sm text-ink/70">
+            <p className="mt-1 font-mono text-sm font-semibold wrap-break-word">
+              {ticket.id}
+            </p>
+            <p
+              id="stage-dialog-description"
+              className="mt-3 text-sm text-ink/70"
+            >
               {copy.description} Tindakan ini tidak dapat dibatalkan.
             </p>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -279,7 +325,10 @@ export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryPr
                 className={`flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-mist transition-[background-color,transform] duration-200 ease-spring active:scale-95 disabled:cursor-not-allowed disabled:opacity-80 bg-teal hover:bg-ink`}
               >
                 {busy && (
-                  <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist" />
+                  <span
+                    aria-hidden="true"
+                    className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist"
+                  />
                 )}
                 {busy ? "Menyimpan…" : copy.confirm}
               </button>
@@ -296,7 +345,12 @@ export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryPr
           description={`${reasonCopy.description} Tindakan ini tidak dapat dibatalkan.`}
           confirmLabel={reasonCopy.confirm}
           busy={busy}
-          onSubmit={(reason) => void run(() => advanceTicketStage(ticket.id, reasonAction, reason), reasonCopy.success)}
+          onSubmit={(reason) =>
+            void run(
+              () => advanceTicketStage(ticket.id, reasonAction, reason),
+              reasonCopy.success,
+            )
+          }
           onClose={() => setReasonAction(null)}
         />
       )}
@@ -306,7 +360,12 @@ export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryPr
           ticketId={ticket.id}
           busy={busy}
           error={notice?.tone === "error" ? notice.message : null}
-          onSubmit={(files) => void run(() => completeTicket(ticket.id, files), actionCopy(ticket, "SELESAI").success)}
+          onSubmit={(files) =>
+            void run(
+              () => completeTicket(ticket.id, files),
+              actionCopy(ticket, "SELESAI").success,
+            )
+          }
           onClose={() => setCompleting(false)}
         />
       )}

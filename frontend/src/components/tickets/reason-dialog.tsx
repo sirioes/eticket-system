@@ -61,7 +61,9 @@ export function ReasonDialog({
         <h2 id={titleId} className="text-lg font-semibold">
           {title}
         </h2>
-        <p className="mt-1 font-mono text-sm font-semibold wrap-break-word">{ticketId}</p>
+        <p className="mt-1 font-mono text-sm font-semibold wrap-break-word">
+          {ticketId}
+        </p>
         <p className="mt-3 text-sm text-ink/70">{description}</p>
 
         <label htmlFor={fieldId} className="mt-5 block text-sm font-medium">
@@ -82,7 +84,10 @@ export function ReasonDialog({
           onBlur={() => setTouched(true)}
           className={`${TEXTAREA_CLASS} scroll-pill mt-2 min-h-32`}
         />
-        <div id={hintId} className="mt-2 flex items-start justify-between gap-3 text-sm">
+        <div
+          id={hintId}
+          className="mt-2 flex items-start justify-between gap-3 text-sm"
+        >
           {showError ? (
             <p role="alert" className="font-medium text-wine">
               Alasan minimal {REASON_MIN_LENGTH} karakter.
@@ -111,7 +116,10 @@ export function ReasonDialog({
             className={`flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-mist transition-[background-color,transform] duration-200 ease-spring active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${CONFIRM_CLASS[action]}`}
           >
             {busy && (
-              <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist" />
+              <span
+                aria-hidden="true"
+                className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist"
+              />
             )}
             {busy ? "Menyimpan…" : confirmLabel}
           </button>

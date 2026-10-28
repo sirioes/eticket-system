@@ -10,13 +10,16 @@ function useCountUp(target: number): number {
   const [value, setValue] = useState(0);
 
   useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const duration = reduced ? 0 : COUNT_UP_MS;
     const startedAt = performance.now();
     let frame = 0;
 
     const tick = (now: number) => {
-      const progress = duration === 0 ? 1 : Math.min((now - startedAt) / duration, 1);
+      const progress =
+        duration === 0 ? 1 : Math.min((now - startedAt) / duration, 1);
       setValue(Math.round(target * (1 - (1 - progress) ** 3)));
       if (progress < 1) frame = requestAnimationFrame(tick);
     };
@@ -124,7 +127,9 @@ function CardBody({ spec, value }: { spec: CardSpec; value: number }) {
   return (
     <>
       <div className="flex items-start justify-between gap-3">
-        <p className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">{spec.label}</p>
+        <p className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">
+          {spec.label}
+        </p>
         <span
           className={`grid size-10 shrink-0 place-items-center rounded-xl transition-transform duration-300 ease-spring group-hover:-rotate-6 group-hover:scale-110 ${spec.chip}`}
         >
@@ -143,9 +148,16 @@ function CardBody({ spec, value }: { spec: CardSpec; value: number }) {
 
 export function StatCards({ stats }: { stats: TicketStats }) {
   return (
-    <ul aria-label="Ringkasan pengaduan" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <ul
+      aria-label="Ringkasan pengaduan"
+      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+    >
       {CARDS.map((spec, index) => (
-        <li key={spec.key} style={{ animationDelay: `${index * 70}ms` }} className="flex animate-fade-up">
+        <li
+          key={spec.key}
+          style={{ animationDelay: `${index * 70}ms` }}
+          className="flex animate-fade-up"
+        >
           {spec.href === null ? (
             <div className={`${CARD_CLASS} w-full`}>
               <CardBody spec={spec} value={stats[spec.key]} />
