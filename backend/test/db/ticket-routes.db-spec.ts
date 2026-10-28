@@ -23,6 +23,8 @@ process.env.CORS_ORIGIN = 'https://eticket.example';
 
 const ITEM = 'IT-20261011-0001';
 
+const REASON = 'Sudah sesuai dengan kebutuhan divisi';
+
 describe('Ticket routes on MySQL', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -60,11 +62,16 @@ describe('Ticket routes on MySQL', () => {
     return cookie;
   };
 
-  const patchStage = (fullName: string, action: string, id = ITEM) =>
+  const patchStage = (
+    fullName: string,
+    action: string,
+    id = ITEM,
+    reason?: string,
+  ) =>
     request(server())
       .patch(`/tickets/${id}/stage`)
       .set('Cookie', as(fullName))
-      .send({ action });
+      .send(reason === undefined ? { action } : { action, reason });
 
   const stageInDb = async (id = ITEM) =>
     (
@@ -111,7 +118,7 @@ describe('Ticket routes on MySQL', () => {
       createdById: idOf('Staf IT DB01'),
     });
 
-  it('walks a ticket from creation to completion with the right actor at every stage', async () => {
+  it('walks a ticket from creation to processing with the right actor and a reason at every decision', async () => {
     const created = await request(server())
       .post('/tickets')
       .set('Cookie', as('Staf IT DB01'))
@@ -123,22 +130,32 @@ describe('Ticket routes on MySQL', () => {
     const id: string = created.body.id;
 
     const steps = [
-      ['Manager IT DB02', 'TERIMA', 'MENUNGGU_MANAGER_TUJUAN'],
-      ['Manager Tax DB04', 'TERIMA', 'MENUNGGU_STAF_TUJUAN'],
-      ['Staf Tax DB03', 'PROSES', 'DIPROSES'],
-      ['Staf Tax DB03', 'SELESAI', 'SELESAI'],
+      ['Manager IT DB02', 'TERIMA', 'MENUNGGU_MANAGER_TUJUAN', REASON],
+      ['Manager Tax DB04', 'TERIMA', 'MENUNGGU_STAF_TUJUAN', REASON],
+      ['Staf Tax DB03', 'PROSES', 'DIPROSES', undefined],
     ] as const;
-    for (const [actor, action, expected] of steps) {
-      const response = await patchStage(actor, action, id);
+    for (const [actor, action, expected, reason] of steps) {
+      const response = await patchStage(actor, action, id, reason);
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ id, stage: expected });
     }
+
+    await expect(
+      prisma.ticketMessage.findMany({
+        where: { ticketId: id },
+        orderBy: { createdAt: 'asc' },
+        select: { kind: true, body: true, author: { select: { fullName: true } } },
+      }),
+    ).resolves.toEqual([
+      { kind: 'ALASAN', body: REASON, author: { fullName: 'Manager IT DB02' } },
+      { kind: 'ALASAN', body: REASON, author: { fullName: 'Manager Tax DB04' } },
+    ]);
 
     const detail = await request(server())
       .get(`/tickets/${id}`)
       .set('Cookie', as('Staf IT DB01'))
       .expect(200);
-    expect(detail.body.stage).toBe('SELESAI');
+    expect(detail.body.stage).toBe('DIPROSES');
     expect(detail.body.availableActions).toEqual([]);
     expect(
       detail.body.timeline.map(
@@ -150,8 +167,40 @@ describe('Ticket routes on MySQL', () => {
       'TERIMA:Manager IT DB02',
       'TERIMA:Manager Tax DB04',
       'PROSES:Staf Tax DB03',
-      'SELESAI:Staf Tax DB03',
     ]);
+  });
+
+  it('refuses to complete a ticket through the stage endpoint', async () => {
+    await seedTicket(prisma, {
+      id: ITEM,
+      fromDivisi: Divisi.IT,
+      toDivisi: Divisi.TAX,
+      createdById: idOf('Staf IT DB01'),
+      stage: 'DIPROSES',
+    });
+
+    const response = await patchStage('Staf Tax DB03', 'SELESAI');
+
+    expect(response.status).toBe(400);
+    await expect(stageInDb()).resolves.toBe('DIPROSES');
+  });
+
+  it.each([
+    ['without a reason', undefined],
+    ['with a short reason', 'singkat'],
+  ])('refuses a decision %s and leaves no trace', async (_label, reason) => {
+    await seedItTicket();
+
+    const response = await patchStage('Manager IT DB02', 'TERIMA', ITEM, reason);
+
+    expect(response.status).toBe(400);
+    await expect(stageInDb()).resolves.toBe('MENUNGGU_MANAGER_ASAL');
+    await expect(
+      prisma.ticketMessage.count({ where: { ticketId: ITEM } }),
+    ).resolves.toBe(0);
+    await expect(
+      prisma.ticketStageLog.count({ where: { ticketId: ITEM } }),
+    ).resolves.toBe(1);
   });
 
   it('turns a double click into one success and one conflict', async () => {
@@ -159,8 +208,8 @@ describe('Ticket routes on MySQL', () => {
 
     const statuses = (
       await Promise.all([
-        patchStage('Manager IT DB02', 'TERIMA'),
-        patchStage('Manager IT DB02', 'TERIMA'),
+        patchStage('Manager IT DB02', 'TERIMA', ITEM, REASON),
+        patchStage('Manager IT DB02', 'TERIMA', ITEM, REASON),
       ])
     )
       .map((response) => response.status)
@@ -173,14 +222,17 @@ describe('Ticket routes on MySQL', () => {
       }),
     ).resolves.toBe(1);
     await expect(stageInDb()).resolves.toBe('MENUNGGU_MANAGER_TUJUAN');
+    await expect(
+      prisma.ticketMessage.count({ where: { ticketId: ITEM } }),
+    ).resolves.toBe(1);
   });
 
   it('lets only one of an accept and a reject sent together win', async () => {
     await seedItTicket();
 
     const responses = await Promise.all([
-      patchStage('Manager IT DB02', 'TERIMA'),
-      patchStage('Manager IT DB02', 'TOLAK'),
+      patchStage('Manager IT DB02', 'TERIMA', ITEM, REASON),
+      patchStage('Manager IT DB02', 'TOLAK', ITEM, REASON),
     ]);
 
     expect(
@@ -188,6 +240,9 @@ describe('Ticket routes on MySQL', () => {
     ).toEqual([200, 409]);
     const winner = responses.find((response) => response.status === 200);
     await expect(stageInDb()).resolves.toBe(winner?.body.stage);
+    await expect(
+      prisma.ticketMessage.count({ where: { ticketId: ITEM } }),
+    ).resolves.toBe(1);
   });
 
   it('refuses a cross-site stage change and leaves the database untouched', async () => {
@@ -197,7 +252,7 @@ describe('Ticket routes on MySQL', () => {
       .patch(`/tickets/${ITEM}/stage`)
       .set('Cookie', as('Manager IT DB02'))
       .set('Sec-Fetch-Site', 'cross-site')
-      .send({ action: 'TERIMA' });
+      .send({ action: 'TERIMA', reason: REASON });
 
     expect(response.status).toBe(403);
     expect(response.body.message).toBe(CROSS_SITE_MESSAGE);
@@ -210,7 +265,7 @@ describe('Ticket routes on MySQL', () => {
   it('answers 404 to a manager of another divisi and changes nothing', async () => {
     await seedItTicket();
 
-    const response = await patchStage('Manager Tax DB04', 'TERIMA');
+    const response = await patchStage('Manager Tax DB04', 'TERIMA', ITEM, REASON);
 
     expect(response.status).toBe(404);
     await expect(stageInDb()).resolves.toBe('MENUNGGU_MANAGER_ASAL');
@@ -219,7 +274,7 @@ describe('Ticket routes on MySQL', () => {
   it('answers 403 to a staff member of the right divisi at a manager stage', async () => {
     await seedItTicket();
 
-    const response = await patchStage('Staf IT DB01', 'TERIMA');
+    const response = await patchStage('Staf IT DB01', 'TERIMA', ITEM, REASON);
 
     expect(response.status).toBe(403);
     await expect(stageInDb()).resolves.toBe('MENUNGGU_MANAGER_ASAL');
@@ -249,7 +304,7 @@ describe('Ticket routes on MySQL', () => {
     it('cannot change the stage of a ticket', async () => {
       await seedItTicket();
 
-      await patchStage('Super Admin DB05', 'TERIMA').expect(403);
+      await patchStage('Super Admin DB05', 'TERIMA', ITEM, REASON).expect(403);
 
       await expect(stageInDb()).resolves.toBe('MENUNGGU_MANAGER_ASAL');
     });

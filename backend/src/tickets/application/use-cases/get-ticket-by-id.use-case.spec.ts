@@ -46,6 +46,7 @@ const detail = (overrides: Partial<TicketDetail> = {}): TicketDetail => ({
   createdById: 11,
   createdBy: { fullName: 'Ayu Lestari', divisi: Divisi.IT },
   attachments: [],
+  completionFiles: [],
   timeline: [
     {
       action: 'DIBUAT',
@@ -151,6 +152,62 @@ describe('GetTicketByIdUseCase', () => {
       expect(view.availableActions).toEqual([]);
       expect(view.isCreator).toBe(false);
       expect(view.canUploadAttachment).toBe(false);
+    });
+  });
+
+  describe('dokumen penyelesaian', () => {
+    const completionFile = {
+      id: 'cf-1',
+      fileName: 'LPJ.xlsx',
+      mimeType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      size: 2048,
+      createdAt,
+      uploadedBy: { fullName: 'Budi Tax', divisi: Divisi.TAX },
+    };
+
+    it.each([
+      ['staf divisi asal', creator],
+      ['staf divisi tujuan', staffTax],
+      ['manager asal', managerIt],
+      ['manager tujuan', managerTax],
+      ['superadmin', superadmin],
+    ] as [string, AuthUser][])('menampilkan dokumen untuk %s', async (_label, actor) => {
+      const view = await get(
+        actor,
+        detail({ stage: 'SELESAI', completionFiles: [completionFile] }),
+      );
+
+      expect(view.completionFiles).toEqual([completionFile]);
+    });
+
+    it('hanya memuat kolom yang sudah dipetakan, tanpa nama berkas di server', async () => {
+      const view = await get(
+        staffTax,
+        detail({
+          stage: 'SELESAI',
+          completionFiles: [
+            {
+              ...completionFile,
+              storedName: 'rahasia-di-disk',
+              uploadedBy: {
+                ...completionFile.uploadedBy,
+                id: 99,
+              },
+            } as TicketDetail['completionFiles'][number],
+          ],
+        }),
+      );
+
+      const serialized = JSON.stringify(view.completionFiles);
+      expect(serialized).not.toContain('rahasia-di-disk');
+      expect(serialized).not.toContain('"id":99');
+    });
+
+    it('mengembalikan daftar kosong untuk tiket tanpa dokumen', async () => {
+      const view = await get(staffTax, detail({ stage: 'SELESAI' }));
+
+      expect(view.completionFiles).toEqual([]);
     });
   });
 
@@ -281,6 +338,31 @@ describe('GetTicketByIdUseCase', () => {
 
       expect(view.isCreator).toBe(false);
       expect(view.canUploadAttachment).toBe(false);
+    });
+  });
+
+  describe('komentar', () => {
+    it.each([
+      ['manager asal', managerIt, true, true],
+      ['manager tujuan', managerTax, true, true],
+      ['superadmin', superadmin, true, false],
+      ['staf divisi asal', creator, false, false],
+      ['staf divisi tujuan', staffTax, false, false],
+    ] as [string, AuthUser, boolean, boolean][])(
+      'menetapkan canReadComments dan canComment untuk %s',
+      async (_label, actor, read, write) => {
+        const view = await get(actor, detail({ stage: 'DIPROSES' }));
+
+        expect(view.canReadComments).toBe(read);
+        expect(view.canComment).toBe(write);
+      },
+    );
+
+    it('menutup canComment pada tahap selesai tetapi tetap boleh membaca', async () => {
+      const view = await get(managerTax, detail({ stage: 'SELESAI' }));
+
+      expect(view.canReadComments).toBe(true);
+      expect(view.canComment).toBe(false);
     });
   });
 });

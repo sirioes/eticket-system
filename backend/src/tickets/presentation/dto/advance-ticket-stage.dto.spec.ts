@@ -45,6 +45,35 @@ describe('AdvanceTicketStageDto', () => {
     },
   );
 
+  it('menerima alasan berupa teks', async () => {
+    await expect(
+      parse({ action: 'TERIMA', reason: 'Sesuai kebutuhan divisi' }),
+    ).resolves.toMatchObject({ reason: 'Sesuai kebutuhan divisi' });
+  });
+
+  it('menerima body tanpa alasan', async () => {
+    await expect(parse({ action: 'PROSES' })).resolves.toMatchObject({
+      action: 'PROSES',
+    });
+  });
+
+  it.each([
+    ['angka', 5],
+    ['array', ['alasan']],
+    ['objek', { text: 'alasan' }],
+    ['null', null],
+  ])('menolak alasan berupa %s', async (_label, reason) => {
+    await expect(
+      parse({ action: 'TERIMA', reason }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('menolak alasan yang terlalu panjang sebelum sampai ke use case', async () => {
+    await expect(
+      parse({ action: 'TERIMA', reason: 'a'.repeat(1001) }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('menolak body yang bukan objek', async () => {
     await expect(parse('TERIMA')).rejects.toBeInstanceOf(BadRequestException);
   });

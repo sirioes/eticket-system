@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@/components/layout/user-context";
-import { TicketAttachments } from "@/components/tickets/ticket-attachments";
+import { TicketComments } from "@/components/tickets/ticket-comments";
+import { TicketFiles } from "@/components/tickets/ticket-files";
+import { TicketInfoPanel } from "@/components/tickets/ticket-info-panel";
 import { TicketNotFound } from "@/components/tickets/ticket-not-found";
-import { TicketStatusPanel } from "@/components/tickets/ticket-status-panel";
+import { TicketSummary } from "@/components/tickets/ticket-summary";
 import { TicketTimeline } from "@/components/tickets/ticket-timeline";
+import { useTicketMessages } from "@/components/tickets/use-ticket-messages";
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/button-class";
-import { CARD_CLASS } from "@/components/ui/card-class";
+import { CARD_SURFACE_CLASS } from "@/components/ui/card-class";
+import { TabList, TabPanel, type TabItem } from "@/components/ui/tabs";
 import { ApiError, errorMessage, isUnauthorized } from "@/lib/api";
-import { DIVISI_LABEL, formatDateWita } from "@/lib/labels";
 import { ticketProgress } from "@/lib/ticket-progress";
 import { getTicket } from "@/lib/tickets";
 import type { SessionUser } from "@/types/auth.types";
@@ -36,17 +39,118 @@ function backLink(user: SessionUser, ticket: TicketDetail): { href: string; labe
   return { href: "/", label: "Dashboard" };
 }
 
-function InfoItem({ label, children }: { label: string; children: ReactNode }) {
+type TabId = "informasi" | "berkas" | "komentar" | "riwayat";
+
+const TAB_PREFIX = "ticket-detail";
+
+const DEFAULT_TAB: TabId = "informasi";
+
+function closedStage(ticket: TicketDetail): boolean {
+  return ticket.stage === "SELESAI" || ticket.stage === "DITOLAK";
+}
+
+interface TicketDetailContentProps {
+  ticket: TicketDetail;
+  refreshing: boolean;
+  onChanged: () => void;
+}
+
+function TicketDetailContent({ ticket, refreshing, onChanged }: TicketDetailContentProps) {
+  const user = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const back = backLink(user, ticket);
+  const showComments = ticket.canReadComments && ticket.stage !== "MENUNGGU_MANAGER_ASAL";
+
+  const available: TabId[] = showComments
+    ? ["informasi", "berkas", "komentar", "riwayat"]
+    : ["informasi", "berkas", "riwayat"];
+  const requested = searchParams.get("tab");
+  const activeTab = available.find((tab) => tab === requested) ?? DEFAULT_TAB;
+
+  const messages = useTicketMessages({
+    ticketId: ticket.id,
+    enabled: showComments && activeTab === "komentar",
+    polling: showComments && activeTab === "komentar" && !closedStage(ticket),
+    onGone: onChanged,
+  });
+
+  const messageCount =
+    messages.state.status === "ready"
+      ? messages.state.messages.filter((message) => message.kind === "KOMENTAR").length
+      : undefined;
+  const tabs: TabItem[] = available.map((id) => {
+    switch (id) {
+      case "informasi":
+        return { id, label: "Informasi Pengaduan" };
+      case "berkas":
+        return { id, label: "Berkas", count: ticket.attachments.length + ticket.completionFiles.length };
+      case "komentar":
+        return { id, label: "Komentar", count: messageCount };
+      case "riwayat":
+        return { id, label: "Riwayat Pengaduan" };
+    }
+  });
+
+  function selectTab(id: string) {
+    if (id === activeTab) return;
+    if (id === "komentar") messages.refresh();
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", id);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
   return (
-    <div className="flex flex-col gap-1">
-      <dt className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">{label}</dt>
-      <dd className="font-medium wrap-break-word">{children}</dd>
+    <div aria-busy={refreshing} className="flex flex-col gap-4 lg:gap-6">
+      <Link
+        href={back.href}
+        className="group inline-flex w-fit animate-fade-up items-center gap-2 rounded-lg text-sm font-medium text-teal transition-colors duration-200 hover:text-ink"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 transition-transform duration-200 ease-spring group-hover:-translate-x-1" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+        Kembali ke {back.label}
+      </Link>
+
+      <TicketSummary ticket={ticket} refreshing={refreshing} onChanged={onChanged} />
+
+      <div className={CARD_SURFACE_CLASS}>
+        <TabList idPrefix={TAB_PREFIX} label="Isi pengaduan" tabs={tabs} active={activeTab} onChange={selectTab} />
+
+        <TabPanel idPrefix={TAB_PREFIX} id="informasi" active={activeTab === "informasi"}>
+          <TicketInfoPanel ticket={ticket} />
+        </TabPanel>
+
+        <TabPanel idPrefix={TAB_PREFIX} id="berkas" active={activeTab === "berkas"}>
+          <TicketFiles ticket={ticket} refreshing={refreshing} onChanged={onChanged} />
+        </TabPanel>
+
+        {showComments && (
+          <TabPanel idPrefix={TAB_PREFIX} id="komentar" active={activeTab === "komentar"}>
+            <TicketComments
+              ticket={ticket}
+              messages={messages.state}
+              active={activeTab === "komentar"}
+              onSent={messages.refresh}
+              onChanged={onChanged}
+              onBack={() => selectTab("informasi")}
+            />
+          </TabPanel>
+        )}
+
+        <TabPanel idPrefix={TAB_PREFIX} id="riwayat" active={activeTab === "riwayat"}>
+          <div className="flex flex-col gap-6">
+            <h2 className="text-lg font-semibold">Riwayat Pengaduan</h2>
+            <TicketTimeline steps={ticketProgress(ticket)} />
+          </div>
+        </TabPanel>
+      </div>
     </div>
   );
 }
 
 export function TicketDetailPage({ id }: { id: string }) {
-  const user = useUser();
   const router = useRouter();
   const [attempt, setAttempt] = useState(0);
   const requestKey = `${id}#${attempt}`;
@@ -76,7 +180,7 @@ export function TicketDetailPage({ id }: { id: string }) {
     };
   }, [id, requestKey, router]);
 
-  const reload = () => setAttempt((value) => value + 1);
+  const reload = useCallback(() => setAttempt((value) => value + 1), []);
 
   if (load.status === "missing") return <TicketNotFound />;
 
@@ -106,65 +210,5 @@ export function TicketDetailPage({ id }: { id: string }) {
     );
   }
 
-  const ticket = load.data;
-  const refreshing = !settled;
-  const back = backLink(user, ticket);
-
-  return (
-    <div aria-busy={refreshing} className="flex flex-col gap-6">
-      <header className="flex animate-fade-up flex-col gap-3">
-        <Link
-          href={back.href}
-          className="group inline-flex w-fit items-center gap-2 rounded-lg text-sm font-medium text-teal transition-colors duration-200 hover:text-ink"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 transition-transform duration-200 ease-spring group-hover:-translate-x-1" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          Kembali ke {back.label}
-        </Link>
-        <div>
-          <p className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">Detail pengaduan</p>
-          <h1 className="mt-1 font-mono text-2xl font-semibold tracking-tight wrap-break-word sm:text-3xl">{ticket.id}</h1>
-          <p className="mt-1 text-sm text-ink/70 sm:text-base">
-            Dari Divisi {DIVISI_LABEL[ticket.fromDivisi]} ke Divisi {DIVISI_LABEL[ticket.toDivisi]}
-          </p>
-        </div>
-      </header>
-
-      <TicketStatusPanel ticket={ticket} refreshing={refreshing} onChanged={reload} />
-
-      <section aria-labelledby="progress-title" className={`${CARD_CLASS} animate-fade-up [animation-delay:120ms]`}>
-        <h2 id="progress-title" className="text-lg font-semibold">
-          Riwayat Pengaduan
-        </h2>
-        <div className="mt-6">
-          <TicketTimeline steps={ticketProgress(ticket)} />
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <section aria-labelledby="info-title" className={`${CARD_CLASS} animate-fade-up [animation-delay:180ms]`}>
-          <h2 id="info-title" className="text-lg font-semibold">
-            Informasi Pengaduan
-          </h2>
-          <dl className="mt-5 grid gap-5 sm:grid-cols-2">
-            <InfoItem label="Divisi asal">{DIVISI_LABEL[ticket.fromDivisi]}</InfoItem>
-            <InfoItem label="Divisi tujuan">{DIVISI_LABEL[ticket.toDivisi]}</InfoItem>
-            <InfoItem label="Dibuat oleh">{ticket.createdBy.fullName}</InfoItem>
-            <InfoItem label="Tanggal dibuat">
-              <time dateTime={ticket.createdAt} className="font-mono text-sm">
-                {formatDateWita(ticket.createdAt)}
-              </time>
-            </InfoItem>
-          </dl>
-          <div className="mt-6 border-t border-ink/10 pt-5">
-            <h3 className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">Keterangan</h3>
-            <p className="mt-2 leading-relaxed whitespace-pre-line wrap-break-word">{ticket.description}</p>
-          </div>
-        </section>
-
-        <TicketAttachments ticket={ticket} refreshing={refreshing} onChanged={reload} />
-      </div>
-    </div>
-  );
+  return <TicketDetailContent ticket={load.data} refreshing={!settled} onChanged={reload} />;
 }

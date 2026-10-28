@@ -134,18 +134,18 @@ export function LoginExperience({
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
       >
-        <div className="absolute -top-48 -right-40 size-[22rem] rounded-full bg-aqua/16 md:-top-52 md:-right-40 md:size-[39rem]" />
-        <div className="absolute -bottom-36 -left-32 size-[19rem] rounded-full bg-teal/10 md:-bottom-56 md:-left-36 md:size-[32rem]" />
+        <div className="absolute -top-48 -right-40 size-88 rounded-full bg-aqua/16 md:-top-52 md:-right-40 md:size-156" />
+        <div className="absolute -bottom-36 -left-32 size-76 rounded-full bg-teal/10 md:-bottom-56 md:-left-36 md:size-128" />
       </div>
 
-      <div className="relative w-full max-w-[440px] transition-[opacity,translate] duration-900 ease-smooth group-data-[phase=intro]:translate-y-24 group-data-[phase=intro]:opacity-0 group-data-[phase=intro]:motion-reduce:translate-y-0 group-data-[phase=intro]:motion-reduce:opacity-100">
+      <div className="relative w-full max-w-110 transition-[opacity,translate] duration-900 ease-smooth group-data-[phase=intro]:translate-y-24 group-data-[phase=intro]:opacity-0 group-data-[phase=intro]:motion-reduce:translate-y-0 group-data-[phase=intro]:motion-reduce:opacity-100">
         <div
           aria-hidden="true"
           className="absolute inset-0 z-10 rounded-[28px] bg-mist shadow-[0_24px_60px_-28px_color-mix(in_oklab,var(--color-ink)_28%,transparent)]"
         />
         <div
           inert={phase !== "form"}
-          className="relative z-40 px-[22px] pt-7 pb-6 sm:px-9 sm:pt-9 sm:pb-[30px]"
+          className="relative z-40 px-5.5 pt-7 pb-6 sm:px-9 sm:pt-9 sm:pb-7.5"
         >
           <LoginCardHeader />
           <LoginForm expired={expired} focusSignal={focusSignal} />

@@ -59,6 +59,15 @@ export interface TicketAttachmentSummary {
   readonly size: number;
 }
 
+export interface TicketCompletionFileSummary {
+  readonly id: string;
+  readonly fileName: string;
+  readonly mimeType: string;
+  readonly size: number;
+  readonly createdAt: Date;
+  readonly uploadedBy: TicketActor;
+}
+
 export interface TicketDetail extends VisibleTicket {
   readonly id: string;
   readonly description: string;
@@ -66,6 +75,7 @@ export interface TicketDetail extends VisibleTicket {
   readonly createdById: number;
   readonly createdBy: TicketActor;
   readonly attachments: TicketAttachmentSummary[];
+  readonly completionFiles: TicketCompletionFileSummary[];
   readonly timeline: TicketTimelineEntry[];
 }
 

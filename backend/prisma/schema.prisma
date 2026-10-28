@@ -8,40 +8,44 @@ datasource db {
 }
 
 model User {
-  id                Int       @id @default(autoincrement())
-  fullName          String    @db.VarChar(191)
+  id                Int      @id @default(autoincrement())
+  fullName          String   @db.VarChar(191)
   password          String
   role              Role
   divisi            Divisi?
-  isActive          Boolean   @default(true)
-  passwordChangedAt DateTime  @default(now())
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  isActive          Boolean  @default(true)
+  passwordChangedAt DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  tickets         Ticket[]           @relation("TicketCreatedBy")
-  attachments     TicketAttachment[] @relation("AttachmentUploadedBy")
-  rejectedTickets Ticket[]           @relation("TicketRejectedBy")
-  stageLogs       TicketStageLog[]   @relation("StageLogActor")
+  tickets         Ticket[]               @relation("TicketCreatedBy")
+  attachments     TicketAttachment[]     @relation("AttachmentUploadedBy")
+  rejectedTickets Ticket[]               @relation("TicketRejectedBy")
+  stageLogs       TicketStageLog[]       @relation("StageLogActor")
+  messages        TicketMessage[]        @relation("MessageAuthor")
+  completionFiles TicketCompletionFile[] @relation("CompletionFileUploadedBy")
 
   @@unique([fullName])
 }
 
 model Ticket {
-  id          String       @id @db.VarChar(191)
-  description String       @db.Text
-  stage       TicketStage  @default(MENUNGGU_MANAGER_ASAL)
+  id          String      @id @db.VarChar(191)
+  description String      @db.Text
+  stage       TicketStage @default(MENUNGGU_MANAGER_ASAL)
   fromDivisi  Divisi
   toDivisi    Divisi
 
   createdById Int
   createdBy   User @relation("TicketCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
-  attachments TicketAttachment[]
-  stageLogs   TicketStageLog[]
+  attachments     TicketAttachment[]
+  stageLogs       TicketStageLog[]
+  messages        TicketMessage[]
+  completionFiles TicketCompletionFile[]
 
   rejectedAtStage TicketStage?
   rejectedById    Int?
-  rejectedBy      User? @relation("TicketRejectedBy", fields: [rejectedById], references: [id], onDelete: Restrict)
+  rejectedBy      User?        @relation("TicketRejectedBy", fields: [rejectedById], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -81,9 +85,53 @@ model TicketStageLog {
   actorId Int
   actor   User @relation("StageLogActor", fields: [actorId], references: [id], onDelete: Restrict)
 
+  message TicketMessage?
+
   createdAt DateTime @default(now())
 
   @@unique([ticketId, fromStage])
+}
+
+model TicketMessage {
+  id       String @id @default(uuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId Int
+  author   User @relation("MessageAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  kind TicketMessageKind
+  body String            @db.Text
+
+  stageLogId String?         @unique
+  stageLog   TicketStageLog? @relation(fields: [stageLogId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+model TicketCompletionFile {
+  id       String @id @default(uuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  fileName   String
+  storedName String
+  mimeType   String
+  size       Int
+
+  uploadedById Int
+  uploadedBy   User @relation("CompletionFileUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+enum TicketMessageKind {
+  KOMENTAR
+  ALASAN
 }
 
 enum TicketLogAction {

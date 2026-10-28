@@ -10,11 +10,13 @@ import type {
   TicketListFilters,
   TicketListItem,
   TicketListQuery,
+  TicketMessage,
   TicketStats,
   UploadedAttachment,
 } from "@/types/ticket.types";
 
 const UPLOAD_FIELD_NAME = "file";
+const COMPLETION_FIELD_NAME = "files";
 
 const TICKET_ID_PATTERN = /^[A-Za-z0-9-]{1,100}$/;
 
@@ -81,12 +83,41 @@ export function getTicket(id: string): Promise<TicketDetail> {
   return api.get<TicketDetail>(ticketPath(id));
 }
 
-export function advanceTicketStage(id: string, action: StageAction): Promise<AdvancedTicket> {
-  return api.patch<AdvancedTicket>(`${ticketPath(id)}/stage`, { action });
+export function advanceTicketStage(
+  id: string,
+  action: StageAction,
+  reason?: string,
+): Promise<AdvancedTicket> {
+  return api.patch<AdvancedTicket>(
+    `${ticketPath(id)}/stage`,
+    reason === undefined ? { action } : { action, reason },
+  );
+}
+
+export function completeTicket(id: string, files: File[]): Promise<AdvancedTicket> {
+  const formData = new FormData();
+  for (const file of files) formData.append(COMPLETION_FIELD_NAME, file);
+  return api.upload<AdvancedTicket>(`${ticketPath(id)}/complete`, formData);
+}
+
+export function listTicketMessages(id: string): Promise<TicketMessage[]> {
+  return api.get<TicketMessage[]>(`${ticketPath(id)}/messages`);
+}
+
+export function postTicketMessage(id: string, body: string): Promise<TicketMessage> {
+  return api.post<TicketMessage>(`${ticketPath(id)}/messages`, { body });
 }
 
 export function downloadAttachment(ticketId: string, attachmentId: string): Promise<DownloadedFile> {
   return api.download(`${ticketPath(ticketId)}/attachments/${encodeURIComponent(attachmentId)}`);
+}
+
+export function downloadCompletionFile(ticketId: string, fileId: string): Promise<DownloadedFile> {
+  return api.download(`${ticketPath(ticketId)}/completion-files/${encodeURIComponent(fileId)}`);
+}
+
+export function downloadTicketExport(id: string): Promise<DownloadedFile> {
+  return api.download(`${ticketPath(id)}/export`);
 }
 
 export function downloadOutgoingExport(filters: TicketListFilters): Promise<DownloadedFile> {

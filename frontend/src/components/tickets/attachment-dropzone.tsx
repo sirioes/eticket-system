@@ -13,6 +13,10 @@ interface AttachmentDropzoneProps {
   errors: string[];
   disabled: boolean;
   maxFiles?: number;
+  accept?: string;
+  inputLabel?: string;
+  hint?: string;
+  removeLabel?: string;
   onAdd: (files: File[]) => void;
   onRemove: (file: File) => void;
 }
@@ -22,6 +26,10 @@ export function AttachmentDropzone({
   errors,
   disabled,
   maxFiles = MAX_ATTACHMENTS_PER_TICKET,
+  accept = ATTACHMENT_ACCEPT,
+  inputLabel = "Pilih file dokumen",
+  hint,
+  removeLabel = "Buang",
   onAdd,
   onRemove,
 }: AttachmentDropzoneProps) {
@@ -57,10 +65,10 @@ export function AttachmentDropzone({
           <p className="text-sm text-ink/70">Seret file ke sini, atau</p>
           <input
             ref={inputRef}
-            aria-label="Pilih file lampiran"
+            aria-label={inputLabel}
             type="file"
             multiple
-            accept={ATTACHMENT_ACCEPT}
+            accept={accept}
             disabled={disabled}
             onChange={handlePick}
             className="sr-only"
@@ -78,8 +86,8 @@ export function AttachmentDropzone({
       </div>
 
       <p className="text-xs text-ink/70">
-        Format: PDF, JPG, PNG, WEBP. Maksimal {MAX_ATTACHMENT_BYTES / 1024 / 1024} MB per file,{" "}
-        {maxFiles} file.
+        {hint ??
+          `Format: PDF, JPG, PNG, WEBP. Maksimal ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB per file, ${maxFiles} file.`}
       </p>
 
       {errors.length > 0 && (
@@ -105,10 +113,10 @@ export function AttachmentDropzone({
                 type="button"
                 disabled={disabled}
                 onClick={() => onRemove(file)}
-                aria-label={`Buang ${file.name}`}
+                aria-label={`${removeLabel} ${file.name}`}
                 className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-wine transition-colors duration-200 hover:bg-red/10 disabled:opacity-60"
               >
-                Buang
+                {removeLabel}
               </button>
             </li>
           ))}

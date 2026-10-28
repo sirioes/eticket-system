@@ -63,6 +63,15 @@ export interface TicketAttachment {
   size: number;
 }
 
+export interface TicketCompletionFile {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  uploadedBy: TicketPerson;
+  createdAt: string;
+}
+
 export interface TicketTimelineEntry {
   action: TicketLogAction;
   fromStage: TicketStage | null;
@@ -81,10 +90,26 @@ export interface TicketDetail {
   createdAt: string;
   createdBy: TicketPerson;
   attachments: TicketAttachment[];
+  completionFiles: TicketCompletionFile[];
   timeline: TicketTimelineEntry[];
   isCreator: boolean;
   availableActions: StageAction[];
   canUploadAttachment: boolean;
+  canReadComments: boolean;
+  canComment: boolean;
+}
+
+export type TicketMessageKind = 'KOMENTAR' | 'ALASAN';
+
+export type ReasonLabel = 'PENGAJUAN' | 'MENERIMA' | 'MENOLAK';
+
+export interface TicketMessage {
+  id: string;
+  kind: TicketMessageKind;
+  reasonLabel: ReasonLabel | null;
+  body: string;
+  createdAt: string;
+  author: TicketPerson;
 }
 
 export interface AdvancedTicket {

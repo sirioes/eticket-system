@@ -7,10 +7,18 @@ import { OUTLINE_BUTTON_CLASS } from "@/components/ui/button-class";
 import { errorMessage, isUnauthorized } from "@/lib/api";
 import { formatFileSize } from "@/lib/attachment-files";
 import { saveBlob } from "@/lib/download";
-import { downloadAttachment } from "@/lib/tickets";
-import type { TicketAttachment } from "@/types/ticket.types";
+import { downloadAttachment, downloadCompletionFile } from "@/lib/tickets";
 
 export type PreviewKind = "image" | "pdf";
+
+export type PreviewSource = "attachment" | "completion";
+
+interface PreviewFile {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+}
 
 const PREVIEW_KIND: Record<string, PreviewKind> = {
   "image/png": "image",
@@ -30,12 +38,13 @@ type PreviewState =
 
 interface AttachmentPreviewDialogProps {
   ticketId: string;
-  attachment: TicketAttachment;
+  source: PreviewSource;
+  file: PreviewFile;
   kind: PreviewKind;
   onClose: () => void;
 }
 
-export function AttachmentPreviewDialog({ ticketId, attachment, kind, onClose }: AttachmentPreviewDialogProps) {
+export function AttachmentPreviewDialog({ ticketId, source, file, kind, onClose }: AttachmentPreviewDialogProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [preview, setPreview] = useState<PreviewState>({ status: "loading" });
@@ -48,10 +57,11 @@ export function AttachmentPreviewDialog({ ticketId, attachment, kind, onClose }:
   useEffect(() => {
     let active = true;
     let url: string | null = null;
-    downloadAttachment(ticketId, attachment.id)
+    const load = source === "completion" ? downloadCompletionFile : downloadAttachment;
+    load(ticketId, file.id)
       .then(({ blob }) => {
         if (!active) return;
-        const typed = new Blob([blob], { type: attachment.mimeType });
+        const typed = new Blob([blob], { type: file.mimeType });
         url = URL.createObjectURL(typed);
         setPreview({ status: "ready", url, blob: typed });
       })
@@ -68,7 +78,7 @@ export function AttachmentPreviewDialog({ ticketId, attachment, kind, onClose }:
       active = false;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [ticketId, attachment.id, attachment.mimeType, router]);
+  }, [ticketId, source, file.id, file.mimeType, router]);
 
   function close() {
     dialogRef.current?.close();
@@ -86,9 +96,9 @@ export function AttachmentPreviewDialog({ ticketId, attachment, kind, onClose }:
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <h2 id="preview-title" className="font-semibold wrap-break-word">
-              {attachment.fileName}
+              {file.fileName}
             </h2>
-            <p className="mt-0.5 font-mono text-xs text-ink/70">{formatFileSize(attachment.size)}</p>
+            <p className="mt-0.5 font-mono text-xs text-ink/70">{formatFileSize(file.size)}</p>
           </div>
           <button
             type="button"
@@ -121,7 +131,7 @@ export function AttachmentPreviewDialog({ ticketId, attachment, kind, onClose }:
             <div className="relative size-full animate-fade-in">
               <Image
                 src={preview.url}
-                alt={`Pratinjau ${attachment.fileName}`}
+                alt={`Pratinjau ${file.fileName}`}
                 fill
                 unoptimized
                 sizes="(min-width: 56rem) 52rem, 100vw"
@@ -133,7 +143,7 @@ export function AttachmentPreviewDialog({ ticketId, attachment, kind, onClose }:
           {preview.status === "ready" && kind === "pdf" && (
             <iframe
               src={preview.url}
-              title={`Pratinjau ${attachment.fileName}`}
+              title={`Pratinjau ${file.fileName}`}
               className="size-full animate-fade-in"
             />
           )}
@@ -141,12 +151,12 @@ export function AttachmentPreviewDialog({ ticketId, attachment, kind, onClose }:
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-ink/70">
-            {kind === "pdf" ? "PDF tidak tampil di perangkatmu? Unduh file untuk membukanya." : ""}
+            {kind === "pdf" ? "PDF tidak tampil pada perangkat Anda? Unduh file untuk membukanya." : ""}
           </p>
           <button
             type="button"
             disabled={preview.status !== "ready"}
-            onClick={() => preview.status === "ready" && saveBlob(preview.blob, attachment.fileName)}
+            onClick={() => preview.status === "ready" && saveBlob(preview.blob, file.fileName)}
             className={`${OUTLINE_BUTTON_CLASS} h-11 px-5 text-sm`}
           >
             Unduh

@@ -13,6 +13,8 @@ import {
 
 const TICKET_ID = 'IT-20261011-0001';
 
+const REASON = 'Sudah sesuai dengan kebutuhan divisi';
+
 describe('PrismaTicketStageRepository on MySQL', () => {
   let prisma: PrismaService;
   let repository: PrismaTicketStageRepository;
@@ -46,22 +48,35 @@ describe('PrismaTicketStageRepository on MySQL', () => {
     });
   });
 
-  const accept = () =>
+  const accept = (reason: string | null = REASON) =>
     repository.advanceStage({
       ticketId: TICKET_ID,
       expectedStage: 'MENUNGGU_MANAGER_ASAL',
       action: 'TERIMA',
       nextStage: 'MENUNGGU_MANAGER_TUJUAN',
       actorId: manager.id,
+      reason,
     });
 
-  const reject = () =>
+  const reject = (reason: string | null = REASON) =>
     repository.advanceStage({
       ticketId: TICKET_ID,
       expectedStage: 'MENUNGGU_MANAGER_ASAL',
       action: 'TOLAK',
       nextStage: 'DITOLAK',
       actorId: manager.id,
+      reason,
+    });
+
+  const messages = () =>
+    prisma.ticketMessage.findMany({
+      where: { ticketId: TICKET_ID },
+      select: {
+        kind: true,
+        body: true,
+        authorId: true,
+        stageLog: { select: { action: true, fromStage: true } },
+      },
     });
 
   const ticket = () =>
@@ -171,6 +186,89 @@ describe('PrismaTicketStageRepository on MySQL', () => {
     await duplicate();
 
     const error: unknown = await duplicate().catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(Prisma.PrismaClientKnownRequestError);
+    expect((error as Prisma.PrismaClientKnownRequestError).code).toBe('P2002');
+  });
+
+  it('stores the reason as an ALASAN message tied to the log row of the same step', async () => {
+    await expect(accept()).resolves.toBe(true);
+
+    await expect(messages()).resolves.toEqual([
+      {
+        kind: 'ALASAN',
+        body: REASON,
+        authorId: manager.id,
+        stageLog: { action: 'TERIMA', fromStage: 'MENUNGGU_MANAGER_ASAL' },
+      },
+    ]);
+  });
+
+  it('stores the reason of a rejection too', async () => {
+    await expect(reject()).resolves.toBe(true);
+
+    await expect(messages()).resolves.toMatchObject([
+      { kind: 'ALASAN', stageLog: { action: 'TOLAK' } },
+    ]);
+  });
+
+  it('writes no message when there is no reason', async () => {
+    await expect(accept(null)).resolves.toBe(true);
+
+    await expect(messages()).resolves.toEqual([]);
+  });
+
+  it('writes no message when the stage was already taken', async () => {
+    await accept();
+
+    await expect(accept('Alasan kedua yang terlambat')).resolves.toBe(false);
+    await expect(messages()).resolves.toHaveLength(1);
+  });
+
+  it('keeps exactly one message when many actions race', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 10 }, (_, index) =>
+        index % 2 === 0
+          ? accept(`Alasan terima nomor ${index}`)
+          : reject(`Alasan tolak nomor ${index}`),
+      ),
+    );
+
+    expect(results.filter(Boolean)).toHaveLength(1);
+    const stored = await messages();
+    expect(stored).toHaveLength(1);
+    const [log] = await logsFrom('MENUNGGU_MANAGER_ASAL');
+    expect(stored[0].stageLog?.action).toBe(log.action);
+  });
+
+  it('rolls the stage and the log back when the reason cannot be stored', async () => {
+    await expect(accept('a'.repeat(70_000))).rejects.toBeDefined();
+
+    await expect(ticket()).resolves.toMatchObject({
+      stage: 'MENUNGGU_MANAGER_ASAL',
+    });
+    await expect(logsFrom('MENUNGGU_MANAGER_ASAL')).resolves.toHaveLength(0);
+    await expect(messages()).resolves.toHaveLength(0);
+  });
+
+  it('is backed by a real unique key on the log row of a message', async () => {
+    await accept();
+    const log = await prisma.ticketStageLog.findFirstOrThrow({
+      where: { ticketId: TICKET_ID, fromStage: 'MENUNGGU_MANAGER_ASAL' },
+      select: { id: true },
+    });
+
+    const error: unknown = await prisma.ticketMessage
+      .create({
+        data: {
+          ticketId: TICKET_ID,
+          authorId: manager.id,
+          kind: 'ALASAN',
+          body: 'Alasan ganda untuk log yang sama',
+          stageLogId: log.id,
+        },
+      })
+      .catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(Prisma.PrismaClientKnownRequestError);
     expect((error as Prisma.PrismaClientKnownRequestError).code).toBe('P2002');

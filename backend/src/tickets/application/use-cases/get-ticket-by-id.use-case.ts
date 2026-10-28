@@ -13,6 +13,10 @@ import {
   STAGE_ACTIONS,
   StageAction,
 } from '../../domain/ticket-stage-flow';
+import {
+  canReadComments,
+  canWriteComments,
+} from '../../domain/ticket-message-rules';
 import { canViewTicket } from '../../domain/ticket-visibility';
 import {
   TicketAttachmentSummary,
@@ -27,6 +31,15 @@ export interface GetTicketByIdQuery {
 export interface TicketPersonView {
   readonly fullName: string;
   readonly divisi: `${Divisi}` | null;
+}
+
+export interface TicketCompletionFileView {
+  readonly id: string;
+  readonly fileName: string;
+  readonly mimeType: string;
+  readonly size: number;
+  readonly createdAt: Date;
+  readonly uploadedBy: TicketPersonView;
 }
 
 export interface TicketTimelineEntryView {
@@ -51,6 +64,9 @@ export interface TicketDetailView {
   readonly isCreator: boolean;
   readonly availableActions: StageAction[];
   readonly canUploadAttachment: boolean;
+  readonly completionFiles: TicketCompletionFileView[];
+  readonly canReadComments: boolean;
+  readonly canComment: boolean;
 }
 
 @Injectable()
@@ -89,6 +105,17 @@ export class GetTicketByIdUseCase {
         mimeType: attachment.mimeType,
         size: attachment.size,
       })),
+      completionFiles: ticket.completionFiles.map((file) => ({
+        id: file.id,
+        fileName: file.fileName,
+        mimeType: file.mimeType,
+        size: file.size,
+        createdAt: file.createdAt,
+        uploadedBy: {
+          fullName: file.uploadedBy.fullName,
+          divisi: file.uploadedBy.divisi,
+        },
+      })),
       timeline: ticket.timeline.map((entry) => ({
         action: entry.action,
         fromStage: entry.fromStage,
@@ -105,6 +132,8 @@ export class GetTicketByIdUseCase {
         isCreator &&
         canReceiveAttachments(ticket.stage) &&
         ticket.attachments.length < MAX_ATTACHMENTS_PER_TICKET,
+      canReadComments: canReadComments(user, ticket),
+      canComment: canWriteComments(user, ticket),
     };
   }
 }

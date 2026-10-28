@@ -48,6 +48,17 @@ const DETAIL_SELECT = {
     select: { id: true, fileName: true, mimeType: true, size: true },
     orderBy: { createdAt: 'asc' },
   },
+  completionFiles: {
+    select: {
+      id: true,
+      fileName: true,
+      mimeType: true,
+      size: true,
+      createdAt: true,
+      uploadedBy: { select: ACTOR_SELECT },
+    },
+    orderBy: [{ createdAt: 'asc' }, { fileName: 'asc' }, { id: 'asc' }],
+  },
   stageLogs: {
     select: {
       action: true,

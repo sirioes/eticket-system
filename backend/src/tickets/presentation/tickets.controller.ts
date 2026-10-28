@@ -7,11 +7,15 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   StreamableFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
+import type { Response } from 'express';
 import type { AuthUser } from '../../auth/domain/auth-user';
 import { CurrentUser } from '../../auth/presentation/decorators/current-user.decorator';
 import {
@@ -44,6 +48,14 @@ import {
   AdvancedTicket,
   AdvanceTicketStageUseCase,
 } from '../application/use-cases/advance-ticket-stage.use-case';
+import { CompleteTicketUseCase } from '../application/use-cases/complete-ticket.use-case';
+import { DownloadCompletionFileUseCase } from '../application/use-cases/download-completion-file.use-case';
+import { ExportTicketDetailUseCase } from '../application/use-cases/export-ticket-detail.use-case';
+import {
+  ListTicketMessagesUseCase,
+  TicketMessageView,
+} from '../application/use-cases/list-ticket-messages.use-case';
+import { PostTicketCommentUseCase } from '../application/use-cases/post-ticket-comment.use-case';
 import { ListAllTicketsUseCase } from '../application/use-cases/list-all-tickets.use-case';
 import { ListIncomingTicketsUseCase } from '../application/use-cases/list-incoming-tickets.use-case';
 import { ListOutgoingTicketsUseCase } from '../application/use-cases/list-outgoing-tickets.use-case';
@@ -51,12 +63,22 @@ import {
   TicketListItemView,
   TicketListView,
 } from '../application/use-cases/ticket-list-query';
+import { MAX_COMPLETION_FILES } from '../domain/completion-file-rules';
+import { CompleteTargetGuard } from './complete-target.guard';
+import {
+  COMPLETION_FIELD_NAME,
+  completionMulterOptions,
+} from './completion-files.config';
 import { AdvanceTicketStageDto } from './dto/advance-ticket-stage.dto';
+import { CompletionFileParamDto } from './dto/completion-file-param.dto';
+import { CreateTicketMessageDto } from './dto/create-ticket-message.dto';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ListTicketsQueryDto } from './dto/list-tickets-query.dto';
 import { TicketFilterQueryDto } from './dto/ticket-filter-query.dto';
 import { TicketIdParamDto } from './dto/ticket-id-param.dto';
 import {
+  COMMENT_THROTTLE,
+  COMPLETE_THROTTLE,
   EXPORT_THROTTLE,
   STAGE_ACTION_THROTTLE,
   XLSX_CONTENT_TYPE,
@@ -83,6 +105,11 @@ export class TicketsController {
     private readonly getTicketById: GetTicketByIdUseCase,
     private readonly advanceTicketStage: AdvanceTicketStageUseCase,
     private readonly exportOutgoingTickets: ExportOutgoingTicketsUseCase,
+    private readonly listTicketMessages: ListTicketMessagesUseCase,
+    private readonly postTicketComment: PostTicketCommentUseCase,
+    private readonly completeTicket: CompleteTicketUseCase,
+    private readonly downloadCompletionFile: DownloadCompletionFileUseCase,
+    private readonly exportTicketDetail: ExportTicketDetailUseCase,
   ) {}
 
   @Roles(...DIVISI_MEMBER_ROLES)
@@ -158,6 +185,26 @@ export class TicketsController {
   }
 
   @AnyRole()
+  @Throttle(EXPORT_THROTTLE)
+  @UseGuards(SameOriginGuard)
+  @Get(':id/export')
+  @Header('Content-Security-Policy', "default-src 'none'; sandbox")
+  async exportDetail(
+    @CurrentUser() user: AuthUser,
+    @Param() params: TicketIdParamDto,
+  ): Promise<StreamableFile> {
+    const file = await this.exportTicketDetail.execute({
+      user,
+      ticketId: params.id,
+    });
+    return new StreamableFile(file.content, {
+      type: XLSX_CONTENT_TYPE,
+      length: file.content.length,
+      disposition: attachmentDisposition(file.fileName),
+    });
+  }
+
+  @AnyRole()
   @Get(':id')
   detail(
     @CurrentUser() user: AuthUser,
@@ -178,6 +225,84 @@ export class TicketsController {
       actor: user,
       ticketId: params.id,
       action: dto.action,
+      reason: dto.reason,
+    });
+  }
+
+  @Roles(...DIVISI_MEMBER_ROLES)
+  @Throttle(COMPLETE_THROTTLE)
+  @UseGuards(CompleteTargetGuard)
+  @Post(':id/complete')
+  @UseInterceptors(
+    FilesInterceptor(
+      COMPLETION_FIELD_NAME,
+      MAX_COMPLETION_FILES,
+      completionMulterOptions,
+    ),
+  )
+  complete(
+    @CurrentUser() user: AuthUser,
+    @Param() params: TicketIdParamDto,
+    @UploadedFiles() files: Express.Multer.File[] | undefined,
+  ): Promise<AdvancedTicket> {
+    return this.completeTicket.execute({
+      actor: user,
+      ticketId: params.id,
+      files: (files ?? []).map((file) => ({
+        storedName: file.filename,
+        originalName: file.originalname,
+        size: file.size,
+      })),
+    });
+  }
+
+  @AnyRole()
+  @Get(':ticketId/completion-files/:fileId')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Header('Content-Security-Policy', "default-src 'none'; sandbox")
+  @Header('Cache-Control', 'private, no-store')
+  async downloadCompletion(
+    @CurrentUser() user: AuthUser,
+    @Param() params: CompletionFileParamDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const file = await this.downloadCompletionFile.execute({
+      user,
+      ticketId: params.ticketId,
+      fileId: params.fileId,
+    });
+
+    response.once('close', () => file.stream.destroy());
+
+    return new StreamableFile(file.stream, {
+      type: file.mimeType,
+      length: file.size,
+      disposition: attachmentDisposition(file.fileName),
+    });
+  }
+
+  @AnyRole()
+  @Get(':id/messages')
+  messages(
+    @CurrentUser() user: AuthUser,
+    @Param() params: TicketIdParamDto,
+  ): Promise<TicketMessageView[]> {
+    return this.listTicketMessages.execute({ user, ticketId: params.id });
+  }
+
+  @AnyRole()
+  @Throttle(COMMENT_THROTTLE)
+  @UseGuards(SameOriginGuard)
+  @Post(':id/messages')
+  postMessage(
+    @CurrentUser() user: AuthUser,
+    @Param() params: TicketIdParamDto,
+    @Body() dto: CreateTicketMessageDto,
+  ): Promise<TicketMessageView> {
+    return this.postTicketComment.execute({
+      user,
+      ticketId: params.id,
+      body: dto.body,
     });
   }
 }
