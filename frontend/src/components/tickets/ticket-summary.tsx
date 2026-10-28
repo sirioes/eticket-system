@@ -1,17 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/components/layout/user-context";
 import { refreshActionCounts } from "@/components/layout/use-action-counts";
 import { CompleteDialog } from "@/components/tickets/complete-dialog";
 import { ReasonDialog, type ReasonAction } from "@/components/tickets/reason-dialog";
-import { StatusBadge } from "@/components/tickets/status-badge";
-import { PRIMARY_BUTTON_CLASS } from "@/components/ui/button-class";
-import { CARD_CLASS } from "@/components/ui/card-class";
+import { TicketExportButton } from "@/components/tickets/ticket-export-button";
+import { TicketStatCard } from "@/components/tickets/ticket-stat-card";
+import { CARD_SURFACE_CLASS } from "@/components/ui/card-class";
 import { ApiError, errorMessage, isUnauthorized } from "@/lib/api";
 import { DIVISI_LABEL, STAGE_ACTION_LABEL } from "@/lib/labels";
-import { stageSummary } from "@/lib/ticket-progress";
+import { MAX_ATTACHMENTS_PER_TICKET, MAX_COMPLETION_FILES } from "@/lib/ticket-rules";
+import { stageNumber } from "@/lib/ticket-progress";
 import { advanceTicketStage, completeTicket } from "@/lib/tickets";
 import type { StageAction, TicketDetail } from "@/types/ticket.types";
 
@@ -27,8 +27,43 @@ interface ActionCopy {
   success: string;
 }
 
+const PROCEED_BUTTON_CLASS =
+  "flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-teal px-5 text-sm font-semibold text-mist transition-[background-color,transform] duration-200 ease-smooth hover:bg-ink active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80 sm:flex-none";
+
 const DANGER_BUTTON_CLASS =
-  "flex h-12 items-center justify-center gap-2 rounded-xl border border-red bg-mist px-6 font-semibold text-red transition-[background-color,color,transform] duration-200 ease-spring hover:bg-red hover:text-mist active:scale-95 disabled:cursor-not-allowed disabled:opacity-60";
+  "flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-red bg-mist px-5 text-sm font-semibold text-red transition-[background-color,color,transform] duration-200 ease-spring hover:bg-red hover:text-mist active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none";
+
+function StatIcon({ children }: { children: ReactNode }) {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      {children}
+    </svg>
+  );
+}
+
+function StepsIcon() {
+  return (
+    <StatIcon>
+      <path d="M9 6h11M9 12h11M9 18h11M4 6l.01 0M4 12l.01 0M4 18l.01 0" />
+    </StatIcon>
+  );
+}
+
+function FileIcon() {
+  return (
+    <StatIcon>
+      <path d="M6 3h9l4 4v14H6zM15 3v4h4" />
+    </StatIcon>
+  );
+}
+
+function FileCheckIcon() {
+  return (
+    <StatIcon>
+      <path d="M6 3h9l4 4v14H6zM15 3v4h4M9.5 14l2 2 3.5-4" />
+    </StatIcon>
+  );
+}
 
 const REFRESH_STATUSES = new Set([403, 404, 409]);
 
@@ -75,15 +110,14 @@ function actionCopy(ticket: TicketDetail, action: StageAction): ActionCopy {
   }
 }
 
-interface TicketStatusPanelProps {
+interface TicketSummaryProps {
   ticket: TicketDetail;
   refreshing: boolean;
   onChanged: () => void;
 }
 
-export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatusPanelProps) {
+export function TicketSummary({ ticket, refreshing, onChanged }: TicketSummaryProps) {
   const router = useRouter();
-  const user = useUser();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState<StageAction | null>(null);
   const [reasonAction, setReasonAction] = useState<ReasonAction | null>(null);
@@ -91,7 +125,6 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
-  const terminal = ticket.stage === "SELESAI" || ticket.stage === "DITOLAK";
   const actions = ticket.availableActions;
   const copy = pending ? actionCopy(ticket, pending) : null;
   const reasonCopy = reasonAction ? actionCopy(ticket, reasonAction) : null;
@@ -150,38 +183,39 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
 
   return (
     <section
-      aria-labelledby="status-title"
-      className={`${CARD_CLASS} flex animate-fade-up flex-col gap-5 [animation-delay:80ms]`}
+      aria-labelledby="summary-title"
+      className={`${CARD_SURFACE_CLASS} flex animate-fade-up flex-col gap-4 p-4 [animation-delay:80ms] sm:p-5`}
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 flex-col items-start gap-3">
-          <h2 id="status-title" className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">
-            Status saat ini
-          </h2>
-          <StatusBadge key={ticket.stage} stage={ticket.stage} fromDivisi={ticket.fromDivisi} toDivisi={ticket.toDivisi} wrap />
-          <p className="text-sm text-ink/70 sm:text-base">{stageSummary(ticket)}</p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
+        <div className="min-w-0">
+          <p className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">Detail pengaduan</p>
+          <h1 id="summary-title" className="font-mono text-xl font-semibold tracking-tight wrap-break-word sm:text-2xl">
+            {ticket.id}
+          </h1>
+          <p className="text-sm text-ink/70">
+            Dari Divisi {DIVISI_LABEL[ticket.fromDivisi]} ke Divisi {DIVISI_LABEL[ticket.toDivisi]}
+          </p>
         </div>
 
-        {actions.length > 0 && (
-          <div className="flex flex-col gap-2 sm:flex-row md:shrink-0">
-            {actions.map((action) => (
-              <button
-                key={action}
-                type="button"
-                disabled={busy || refreshing}
-                onClick={() => open(action)}
-                className={action === "TOLAK" ? DANGER_BUTTON_CLASS : PRIMARY_BUTTON_CLASS}
-              >
-                {STAGE_ACTION_LABEL[action]}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-2 sm:justify-end sm:gap-3 md:shrink-0">
+          {actions.map((action) => (
+            <button
+              key={action}
+              type="button"
+              disabled={busy || refreshing}
+              onClick={() => open(action)}
+              className={action === "TOLAK" ? DANGER_BUTTON_CLASS : PROCEED_BUTTON_CLASS}
+            >
+              {STAGE_ACTION_LABEL[action]}
+            </button>
+          ))}
+          <TicketExportButton
+            ticketId={ticket.id}
+            disabled={busy}
+            onError={(message) => setNotice({ tone: "error", message })}
+          />
+        </div>
       </div>
-
-      {actions.length === 0 && !terminal && !notice && user.role !== "SUPERADMIN" && (
-        <p className="text-sm text-ink/70">Tidak ada tindakan yang perlu kamu lakukan di tahap ini.</p>
-      )}
 
       {notice?.tone === "success" && (
         <p key={notice.message} role="status" className="animate-pop-in rounded-xl bg-green/15 px-4 py-3 text-sm font-medium text-ink">
@@ -193,6 +227,22 @@ export function TicketStatusPanel({ ticket, refreshing, onChanged }: TicketStatu
           {notice.message}
         </p>
       )}
+
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <TicketStatCard icon={<StepsIcon />} label="Tahap persetujuan" value={stageNumber(ticket)} unit="/5 tahap" />
+        <TicketStatCard
+          icon={<FileIcon />}
+          label="Dokumen Pengaduan"
+          value={ticket.attachments.length}
+          unit={`/${MAX_ATTACHMENTS_PER_TICKET} file`}
+        />
+        <TicketStatCard
+          icon={<FileCheckIcon />}
+          label="Dokumen Penyelesaian"
+          value={ticket.completionFiles.length}
+          unit={`/${MAX_COMPLETION_FILES} file`}
+        />
+      </div>
 
       <dialog
         ref={dialogRef}
