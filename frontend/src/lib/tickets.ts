@@ -116,6 +116,10 @@ export function downloadCompletionFile(ticketId: string, fileId: string): Promis
   return api.download(`${ticketPath(ticketId)}/completion-files/${encodeURIComponent(fileId)}`);
 }
 
+export function downloadTicketExport(id: string): Promise<DownloadedFile> {
+  return api.download(`${ticketPath(id)}/export`);
+}
+
 export function downloadOutgoingExport(filters: TicketListFilters): Promise<DownloadedFile> {
   return api.download(withQuery("/tickets/outgoing/export", filters));
 }

@@ -41,6 +41,10 @@ function currentPosition(ticket: ProgressTicket): number {
   return PIPELINE.indexOf(ticket.stage);
 }
 
+export function stageNumber(ticket: ProgressTicket): number {
+  return currentPosition(ticket);
+}
+
 function stepState(index: number, position: number, rejected: boolean): ProgressStepState {
   if (index < position) return "done";
   if (index === position) return rejected ? "rejected" : "current";
