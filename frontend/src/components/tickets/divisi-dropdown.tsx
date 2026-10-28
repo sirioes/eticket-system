@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 import { INPUT_CLASS } from "@/components/ui/input-class";
 import { DIVISI_LABEL } from "@/lib/labels";
 import type { Divisi } from "@/types/auth.types";
@@ -34,9 +41,12 @@ export function DivisiDropdown({
     };
     document.addEventListener("pointerdown", closeOnOutsidePress);
     const panel = panelRef.current;
-    (panel?.querySelector<HTMLInputElement>("input:checked") ??
-      panel?.querySelector<HTMLInputElement>("input"))?.focus();
-    return () => document.removeEventListener("pointerdown", closeOnOutsidePress);
+    (
+      panel?.querySelector<HTMLInputElement>("input:checked") ??
+      panel?.querySelector<HTMLInputElement>("input")
+    )?.focus();
+    return () =>
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
   }, [open]);
 
   function close() {
@@ -57,7 +67,8 @@ export function DivisiDropdown({
       className="relative"
       onBlur={(event) => {
         const next = event.relatedTarget;
-        if (next instanceof Node && !event.currentTarget.contains(next)) setOpen(false);
+        if (next instanceof Node && !event.currentTarget.contains(next))
+          setOpen(false);
       }}
     >
       <button

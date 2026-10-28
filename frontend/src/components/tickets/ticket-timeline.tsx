@@ -28,17 +28,40 @@ function isReached(state: ProgressStepState): boolean {
   return state === "done" || state === "rejected" || state === "current";
 }
 
-function MarkerIcon({ state, index }: { state: ProgressStepState; index: number }) {
+function MarkerIcon({
+  state,
+  index,
+}: {
+  state: ProgressStepState;
+  index: number;
+}) {
   if (state === "done") {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="size-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="m5 12 5 5 9-10" />
       </svg>
     );
   }
   if (state === "rejected") {
     return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="size-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={3}
+        strokeLinecap="round"
+      >
         <path d="M6 6l12 12M18 6 6 18" />
       </svg>
     );
@@ -66,7 +89,10 @@ export function TicketTimeline({ steps }: { steps: ProgressStep[] }) {
             )}
             <span className="relative grid size-8 shrink-0 place-items-center">
               {step.state === "current" && (
-                <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-yellow/70" />
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0 animate-ping rounded-full bg-yellow/70"
+                />
               )}
               <span
                 className={`relative grid size-8 animate-pop-in place-items-center rounded-full ${MARKER_CLASS[step.state]}`}
@@ -77,14 +103,20 @@ export function TicketTimeline({ steps }: { steps: ProgressStep[] }) {
             </span>
             <div className="flex min-w-0 flex-col gap-1 pt-1 md:pt-0">
               <p className="font-semibold wrap-break-word">{step.title}</p>
-              <p className={`font-mono text-xs font-semibold tracking-[0.1em] uppercase ${NOTE_CLASS[step.state]}`}>
+              <p
+                className={`font-mono text-xs font-semibold tracking-[0.1em] uppercase ${NOTE_CLASS[step.state]}`}
+              >
                 {step.note}
               </p>
               {step.entry && (
                 <>
-                  <p className="text-sm wrap-break-word">{personLabel(step.entry.actor)}</p>
+                  <p className="text-sm wrap-break-word">
+                    {personLabel(step.entry.actor)}
+                  </p>
                   <p className="font-mono text-xs text-ink/70">
-                    <time dateTime={step.entry.createdAt}>{formatDateWita(step.entry.createdAt)}</time>
+                    <time dateTime={step.entry.createdAt}>
+                      {formatDateWita(step.entry.createdAt)}
+                    </time>
                   </p>
                 </>
               )}

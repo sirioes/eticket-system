@@ -17,10 +17,17 @@ type StoredState = MessagesState & { ticketId: string };
 
 const LOADING: MessagesState = { status: "loading" };
 
-function isSameList(state: StoredState, ticketId: string, next: TicketMessage[]): boolean {
-  if (state.ticketId !== ticketId || state.status !== "ready" || state.stale) return false;
+function isSameList(
+  state: StoredState,
+  ticketId: string,
+  next: TicketMessage[],
+): boolean {
+  if (state.ticketId !== ticketId || state.status !== "ready" || state.stale)
+    return false;
   const current = state.messages;
-  return current.length === next.length && current.at(-1)?.id === next.at(-1)?.id;
+  return (
+    current.length === next.length && current.at(-1)?.id === next.at(-1)?.id
+  );
 }
 
 interface UseTicketMessagesOptions {
@@ -30,7 +37,12 @@ interface UseTicketMessagesOptions {
   onGone: () => void;
 }
 
-export function useTicketMessages({ ticketId, enabled, polling, onGone }: UseTicketMessagesOptions) {
+export function useTicketMessages({
+  ticketId,
+  enabled,
+  polling,
+  onGone,
+}: UseTicketMessagesOptions) {
   const router = useRouter();
   const [tick, setTick] = useState(0);
   const [stored, setStored] = useState<StoredState>({ ticketId, ...LOADING });
@@ -42,7 +54,9 @@ export function useTicketMessages({ ticketId, enabled, polling, onGone }: UseTic
       .then((messages) => {
         if (active) {
           setStored((previous) =>
-            isSameList(previous, ticketId, messages) ? previous : { ticketId, status: "ready", messages },
+            isSameList(previous, ticketId, messages)
+              ? previous
+              : { ticketId, status: "ready", messages },
           );
         }
       })

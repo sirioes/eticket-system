@@ -7,7 +7,10 @@ import { AllTicketsTable } from "@/components/tickets/all-tickets-table";
 import { EmptyState } from "@/components/tickets/empty-state";
 import { TicketListToolbar } from "@/components/tickets/ticket-list-toolbar";
 import { TicketPagination } from "@/components/tickets/ticket-pagination";
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "@/components/ui/button-class";
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/button-class";
 import { errorMessage, isUnauthorized } from "@/lib/api";
 import { DIVISI_LABEL } from "@/lib/labels";
 import {
@@ -36,7 +39,10 @@ export function AllTicketsPage() {
   const isSuperadmin = user.role === "SUPERADMIN";
 
   const query = searchParams.toString();
-  const state = useMemo(() => readTicketListState(new URLSearchParams(query)), [query]);
+  const state = useMemo(
+    () => readTicketListState(new URLSearchParams(query)),
+    [query],
+  );
   const stateKey = writeTicketListState(state);
 
   const [attempt, setAttempt] = useState(0);
@@ -47,7 +53,11 @@ export function AllTicketsPage() {
   useEffect(() => {
     if (!isSuperadmin) return;
     let active = true;
-    listAllTickets({ ...state.filters, page: state.page, limit: TICKET_PAGE_SIZE })
+    listAllTickets({
+      ...state.filters,
+      page: state.page,
+      limit: TICKET_PAGE_SIZE,
+    })
       .then((data) => {
         if (active) setLoad({ status: "ready", key: requestKey, data });
       })
@@ -57,7 +67,11 @@ export function AllTicketsPage() {
           router.replace("/login?reason=expired");
           return;
         }
-        setLoad({ status: "error", key: requestKey, message: errorMessage(caught) });
+        setLoad({
+          status: "error",
+          key: requestKey,
+          message: errorMessage(caught),
+        });
       });
     return () => {
       active = false;
@@ -65,11 +79,14 @@ export function AllTicketsPage() {
   }, [isSuperadmin, router, state, requestKey]);
 
   const refreshing = load.status === "ready" && !settled;
-  const showSpinner = load.status === "idle" || (load.status === "error" && !settled);
+  const showSpinner =
+    load.status === "idle" || (load.status === "error" && !settled);
 
   function navigate(next: TicketListState) {
     const search = writeTicketListState(next);
-    router.push(search === "" ? pathname : `${pathname}?${search}`, { scroll: false });
+    router.push(search === "" ? pathname : `${pathname}?${search}`, {
+      scroll: false,
+    });
   }
 
   function applyFilters(filters: TicketListFilters) {
@@ -79,7 +96,9 @@ export function AllTicketsPage() {
   if (!isSuperadmin) {
     return (
       <div className="animate-fade-up">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Semua Pengaduan</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          Semua Pengaduan
+        </h1>
         <p className="mt-6 rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
           Halaman ini hanya untuk superadmin.
         </p>
@@ -92,7 +111,9 @@ export function AllTicketsPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="animate-fade-up">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Semua Pengaduan</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          Semua Pengaduan
+        </h1>
         <p className="mt-1 text-sm text-ink/70 sm:text-base">
           Seluruh pengaduan antar divisi di semua tahap, hanya untuk dipantau.
         </p>
@@ -136,17 +157,22 @@ export function AllTicketsPage() {
           </div>
         )}
 
-        {load.status === "ready" && load.data.items.length === 0 && load.data.total > 0 && (
-          <EmptyState eyebrow="Halaman kosong" message="Halaman ini melewati jumlah halaman yang ada.">
-            <button
-              type="button"
-              onClick={() => navigate({ filters: state.filters, page: 1 })}
-              className={PRIMARY_BUTTON_CLASS}
+        {load.status === "ready" &&
+          load.data.items.length === 0 &&
+          load.data.total > 0 && (
+            <EmptyState
+              eyebrow="Halaman kosong"
+              message="Halaman ini melewati jumlah halaman yang ada."
             >
-              Ke halaman pertama
-            </button>
-          </EmptyState>
-        )}
+              <button
+                type="button"
+                onClick={() => navigate({ filters: state.filters, page: 1 })}
+                className={PRIMARY_BUTTON_CLASS}
+              >
+                Ke halaman pertama
+              </button>
+            </EmptyState>
+          )}
 
         {load.status === "ready" && load.data.total === 0 && filtered && (
           <EmptyState
@@ -164,7 +190,10 @@ export function AllTicketsPage() {
         )}
 
         {load.status === "ready" && load.data.total === 0 && !filtered && (
-          <EmptyState eyebrow="Masih kosong" message="Belum ada pengaduan di sistem.">
+          <EmptyState
+            eyebrow="Masih kosong"
+            message="Belum ada pengaduan di sistem."
+          >
             <p className="max-w-sm text-sm text-ink/70">
               Pengaduan yang dibuat oleh divisi mana pun akan muncul di sini.
             </p>
@@ -176,11 +205,21 @@ export function AllTicketsPage() {
             aria-busy={refreshing}
             className={`flex flex-col gap-6 transition-opacity duration-200 ${refreshing ? "opacity-60" : ""}`}
           >
-            <AllTicketsTable items={load.data.items} firstNumber={(load.data.page - 1) * load.data.limit + 1} />
+            <AllTicketsTable
+              items={load.data.items}
+              firstNumber={(load.data.page - 1) * load.data.limit + 1}
+            />
             <footer className="flex flex-col gap-4 border-t border-ink/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-ink/70" aria-live="polite">
-                Menampilkan <span className="font-mono font-semibold text-ink">{load.data.items.length}</span> dari{" "}
-                <span className="font-mono font-semibold text-ink">{load.data.total}</span> data pengaduan
+                Menampilkan{" "}
+                <span className="font-mono font-semibold text-ink">
+                  {load.data.items.length}
+                </span>{" "}
+                dari{" "}
+                <span className="font-mono font-semibold text-ink">
+                  {load.data.total}
+                </span>{" "}
+                data pengaduan
               </p>
               <TicketPagination
                 page={load.data.page}

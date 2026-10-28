@@ -27,7 +27,12 @@ function Arrow({ direction }: { direction: "left" | "right" }) {
   );
 }
 
-export function TicketPagination({ page, totalPages, disabled, onChange }: TicketPaginationProps) {
+export function TicketPagination({
+  page,
+  totalPages,
+  disabled,
+  onChange,
+}: TicketPaginationProps) {
   if (totalPages <= 1) return null;
 
   return (
@@ -46,7 +51,11 @@ export function TicketPagination({ page, totalPages, disabled, onChange }: Ticke
         </li>
         {pageSlots(page, totalPages).map((slot, index) =>
           slot === "gap" ? (
-            <li key={`gap-${index}`} aria-hidden="true" className="px-1 font-mono text-ink/70">
+            <li
+              key={`gap-${index}`}
+              aria-hidden="true"
+              className="px-1 font-mono text-ink/70"
+            >
               …
             </li>
           ) : (

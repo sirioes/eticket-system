@@ -10,7 +10,10 @@ import { INPUT_CLASS, TEXTAREA_CLASS } from "@/components/ui/input-class";
 import { errorMessage, isUnauthorized } from "@/lib/api";
 import { addFiles } from "@/lib/attachment-files";
 import { DIVISI_LABEL } from "@/lib/labels";
-import { DESCRIPTION_MAX_LENGTH, DESCRIPTION_MIN_LENGTH } from "@/lib/ticket-rules";
+import {
+  DESCRIPTION_MAX_LENGTH,
+  DESCRIPTION_MIN_LENGTH,
+} from "@/lib/ticket-rules";
 import { createTicket, uploadAttachment } from "@/lib/tickets";
 import type { Divisi } from "@/types/auth.types";
 
@@ -107,8 +110,13 @@ function TicketForm({ fromDivisi }: { fromDivisi: Divisi }) {
       divisiRef.current?.focus();
       return;
     }
-    if (characterCount(text) < DESCRIPTION_MIN_LENGTH || characterCount(text) > DESCRIPTION_MAX_LENGTH) {
-      setError(`Keterangan harus ${DESCRIPTION_MIN_LENGTH}–${DESCRIPTION_MAX_LENGTH} karakter.`);
+    if (
+      characterCount(text) < DESCRIPTION_MIN_LENGTH ||
+      characterCount(text) > DESCRIPTION_MAX_LENGTH
+    ) {
+      setError(
+        `Keterangan harus ${DESCRIPTION_MIN_LENGTH}–${DESCRIPTION_MAX_LENGTH} karakter.`,
+      );
       descriptionRef.current?.focus();
       return;
     }
@@ -133,13 +141,21 @@ function TicketForm({ fromDivisi }: { fromDivisi: Divisi }) {
   if (result) {
     return (
       <div className="mt-6 max-w-3xl animate-fade-up rounded-3xl bg-mist p-6 sm:p-8">
-        <p role="status" className="rounded-xl bg-green/15 px-4 py-3 text-sm font-medium text-teal">
-          Pengaduan <span className="font-mono">{result.ticketId}</span> berhasil dikirim.
+        <p
+          role="status"
+          className="rounded-xl bg-green/15 px-4 py-3 text-sm font-medium text-teal"
+        >
+          Pengaduan <span className="font-mono">{result.ticketId}</span>{" "}
+          berhasil dikirim.
         </p>
         {result.failedUploads.length > 0 && (
-          <div role="alert" className="mt-4 rounded-xl bg-red/10 px-4 py-3 text-sm text-red">
+          <div
+            role="alert"
+            className="mt-4 rounded-xl bg-red/10 px-4 py-3 text-sm text-red"
+          >
             <p className="font-medium">
-              Pengaduan sudah tercatat, tetapi dokumen pengaduan berikut gagal diunggah:
+              Pengaduan sudah tercatat, tetapi dokumen pengaduan berikut gagal
+              diunggah:
             </p>
             <ul className="mt-2 list-disc pl-5">
               {result.failedUploads.map((failure, index) => (
@@ -149,12 +165,17 @@ function TicketForm({ fromDivisi }: { fromDivisi: Divisi }) {
               ))}
             </ul>
             <p className="mt-2">
-              Dokumen pengaduan yang gagal dapat ditambahkan lagi dari halaman detail pengaduan selama
-              pengaduan masih menunggu manajer divisi pengirim.
+              Dokumen pengaduan yang gagal dapat ditambahkan lagi dari halaman
+              detail pengaduan selama pengaduan masih menunggu manajer divisi
+              pengirim.
             </p>
           </div>
         )}
-        <button type="button" onClick={reset} className={`${PRIMARY_BUTTON_CLASS} mt-6`}>
+        <button
+          type="button"
+          onClick={reset}
+          className={`${PRIMARY_BUTTON_CLASS} mt-6`}
+        >
           Buat pengaduan baru
         </button>
       </div>
@@ -170,7 +191,10 @@ function TicketForm({ fromDivisi }: { fromDivisi: Divisi }) {
         className="flex flex-col gap-5 rounded-3xl bg-mist p-6 shadow-[0_24px_60px_-28px_color-mix(in_oklab,var(--color-ink)_35%,transparent)] sm:p-8"
       >
         {error && (
-          <p role="alert" className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-red">
+          <p
+            role="alert"
+            className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-red"
+          >
             {error}
           </p>
         )}
@@ -242,7 +266,12 @@ function TicketForm({ fromDivisi }: { fromDivisi: Divisi }) {
           >
             Reset
           </button>
-          <button type="submit" disabled={busy} aria-busy={busy} className={PRIMARY_BUTTON_CLASS}>
+          <button
+            type="submit"
+            disabled={busy}
+            aria-busy={busy}
+            className={PRIMARY_BUTTON_CLASS}
+          >
             {busy && (
               <span
                 aria-hidden="true"

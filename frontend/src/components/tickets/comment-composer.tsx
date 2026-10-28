@@ -10,7 +10,16 @@ const PILL_CLASS = "flex min-h-13 gap-2 rounded-[26px] border py-2 pr-2 pl-5";
 
 function SendIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d={SEND_ICON_PATH} />
     </svg>
   );
@@ -37,7 +46,9 @@ export function CommentComposer({
 
   if (closedNotice !== null) {
     return (
-      <div className={`${PILL_CLASS} items-center border-ink/10 bg-ink/10 text-ink/70`}>
+      <div
+        className={`${PILL_CLASS} items-center border-ink/10 bg-ink/10 text-ink/70`}
+      >
         <p className="min-w-0 flex-1 text-sm">{closedNotice}</p>
         <button
           type="button"
@@ -70,7 +81,12 @@ export function CommentComposer({
           placeholder="Tulis komentar…"
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && !coarsePointer) {
+            if (
+              event.key === "Enter" &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing &&
+              !coarsePointer
+            ) {
               event.preventDefault();
               event.currentTarget.form?.requestSubmit();
             }
@@ -85,14 +101,21 @@ export function CommentComposer({
           className="grid size-9 shrink-0 place-items-center rounded-full bg-teal text-mist transition-[background-color,transform] duration-200 ease-smooth hover:bg-ink active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {sending ? (
-            <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist" />
+            <span
+              aria-hidden="true"
+              className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist"
+            />
           ) : (
             <SendIcon />
           )}
         </button>
       </div>
       {error && (
-        <p key={error} role="alert" className="animate-shake text-sm font-medium text-wine">
+        <p
+          key={error}
+          role="alert"
+          className="animate-shake text-sm font-medium text-wine"
+        >
           {error}
         </p>
       )}

@@ -18,12 +18,20 @@ interface StatusBadgeProps {
   wrap?: boolean;
 }
 
-export function StatusBadge({ stage, fromDivisi, toDivisi, wrap = false }: StatusBadgeProps) {
+export function StatusBadge({
+  stage,
+  fromDivisi,
+  toDivisi,
+  wrap = false,
+}: StatusBadgeProps) {
   return (
     <span
       className={`inline-flex max-w-full animate-pop-in gap-1.5 px-3 py-1 text-xs font-semibold ${wrap ? "items-center rounded-xl text-left leading-snug" : "items-center rounded-full whitespace-nowrap"} ${STAGE_STYLE[stage]}`}
     >
-      <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-current" />
+      <span
+        aria-hidden="true"
+        className="size-1.5 shrink-0 rounded-full bg-current"
+      />
       {stageLabel({ stage, fromDivisi, toDivisi })}
     </span>
   );

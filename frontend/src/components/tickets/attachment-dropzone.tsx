@@ -91,7 +91,10 @@ export function AttachmentDropzone({
       </p>
 
       {errors.length > 0 && (
-        <ul role="alert" className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
+        <ul
+          role="alert"
+          className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine"
+        >
           {errors.map((error, index) => (
             <li key={index}>{error}</li>
           ))}

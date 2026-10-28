@@ -9,7 +9,12 @@ interface ModalDialogProps {
   children: ReactNode;
 }
 
-export function ModalDialog({ titleId, busy, onClose, children }: ModalDialogProps) {
+export function ModalDialog({
+  titleId,
+  busy,
+  onClose,
+  children,
+}: ModalDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {

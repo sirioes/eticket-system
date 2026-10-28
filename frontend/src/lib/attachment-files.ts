@@ -46,17 +46,29 @@ function extensionOf(name: string): string {
   return dot === -1 ? "" : name.slice(dot + 1).toLowerCase();
 }
 
-function rejectionReason(rules: FileRules, file: File, accepted: File[]): string | null {
-  if (!rules.extensions.includes(extensionOf(file.name))) return rules.typeMessage;
+function rejectionReason(
+  rules: FileRules,
+  file: File,
+  accepted: File[],
+): string | null {
+  if (!rules.extensions.includes(extensionOf(file.name)))
+    return rules.typeMessage;
   if (file.size === 0) return "file kosong";
   if (file.size > rules.maxBytes) return rules.sizeMessage;
-  if (accepted.some((item) => item.name === file.name && item.size === file.size)) {
+  if (
+    accepted.some((item) => item.name === file.name && item.size === file.size)
+  ) {
     return "sudah ditambahkan";
   }
   return null;
 }
 
-function select(rules: FileRules, current: File[], incoming: File[], limit: number): FileSelection {
+function select(
+  rules: FileRules,
+  current: File[],
+  incoming: File[],
+  limit: number,
+): FileSelection {
   const files = [...current];
   const errors: string[] = [];
   let limitReached = false;
@@ -84,7 +96,10 @@ export function addFiles(
   return select(ATTACHMENT_RULES, current, incoming, limit);
 }
 
-export function addCompletionFiles(current: File[], incoming: File[]): FileSelection {
+export function addCompletionFiles(
+  current: File[],
+  incoming: File[],
+): FileSelection {
   return select(COMPLETION_RULES, current, incoming, MAX_COMPLETION_FILES);
 }
 

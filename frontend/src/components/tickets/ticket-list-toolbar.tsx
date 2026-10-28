@@ -1,7 +1,10 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "@/components/ui/button-class";
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/button-class";
 import { INPUT_CLASS } from "@/components/ui/input-class";
 import { DIVISI_LABEL, STAGE_FILTER_LABEL } from "@/lib/labels";
 import {
@@ -109,7 +112,11 @@ export function TicketListToolbar({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <form role="search" onSubmit={submitSearch} className="flex flex-1 flex-col gap-2">
+        <form
+          role="search"
+          onSubmit={submitSearch}
+          className="flex flex-1 flex-col gap-2"
+        >
           <label htmlFor={`${ids}-search`} className="sr-only">
             Cari ID pengaduan
           </label>
@@ -137,7 +144,9 @@ export function TicketListToolbar({
                 placeholder="Contoh: IT-2026"
                 value={search}
                 aria-invalid={searchError !== null}
-                aria-describedby={searchError ? `${ids}-search-error` : undefined}
+                aria-describedby={
+                  searchError ? `${ids}-search-error` : undefined
+                }
                 onChange={(event) => setSearch(event.target.value)}
                 className={`${INPUT_CLASS} pl-12`}
               />
@@ -147,7 +156,11 @@ export function TicketListToolbar({
             </button>
           </div>
           {searchError && (
-            <p id={`${ids}-search-error`} role="alert" className="animate-shake text-sm text-wine">
+            <p
+              id={`${ids}-search-error`}
+              role="alert"
+              className="animate-shake text-sm text-wine"
+            >
               {searchError}
             </p>
           )}
@@ -222,7 +235,9 @@ export function TicketListToolbar({
                 <select
                   id={`${ids}-divisi`}
                   value={divisi}
-                  onChange={(event) => setDivisi(event.target.value as Divisi | "")}
+                  onChange={(event) =>
+                    setDivisi(event.target.value as Divisi | "")
+                  }
                   className={SELECT_CLASS}
                 >
                   <option value="">Semua divisi</option>
@@ -243,7 +258,9 @@ export function TicketListToolbar({
                 <select
                   id={`${ids}-status`}
                   value={status}
-                  onChange={(event) => setStatus(event.target.value as TicketStage | "")}
+                  onChange={(event) =>
+                    setStatus(event.target.value as TicketStage | "")
+                  }
                   className={SELECT_CLASS}
                 >
                   <option value="">Semua status</option>
@@ -265,7 +282,11 @@ export function TicketListToolbar({
           )}
 
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={resetFilters} className={SECONDARY_BUTTON_CLASS}>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className={SECONDARY_BUTTON_CLASS}
+            >
               Atur ulang
             </button>
             <button type="submit" className={PRIMARY_BUTTON_CLASS}>

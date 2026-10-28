@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { ModalDialog } from "@/components/ui/modal-dialog";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SelectField } from "@/components/ui/select-field";
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "@/components/ui/button-class";
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/button-class";
 import { INPUT_CLASS } from "@/components/ui/input-class";
 import { errorMessage, isUnauthorized } from "@/lib/api";
 import { DIVISI_LABEL } from "@/lib/labels";
@@ -22,7 +25,8 @@ import { createUser, updateUser } from "@/lib/users";
 import type { Divisi, Role } from "@/types/auth.types";
 import type { ManagedUser, UpdateUserInput } from "@/types/user.types";
 
-export type UserFormTarget = { kind: "create" } | { kind: "edit"; user: ManagedUser };
+export type UserFormTarget =
+  { kind: "create" } | { kind: "edit"; user: ManagedUser };
 
 interface UserFormDialogProps {
   target: UserFormTarget;
@@ -46,7 +50,12 @@ function buildChanges(
   return changes;
 }
 
-export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDialogProps) {
+export function UserFormDialog({
+  target,
+  users,
+  onClose,
+  onSaved,
+}: UserFormDialogProps) {
   const router = useRouter();
   const ids = useId();
   const formRef = useRef<HTMLFormElement>(null);
@@ -58,7 +67,9 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
   const [divisi, setDivisi] = useState<Divisi | null>(editing?.divisi ?? null);
   const [isActive, setIsActive] = useState(editing?.isActive ?? true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ text: string; tick: number } | null>(null);
+  const [error, setError] = useState<{ text: string; tick: number } | null>(
+    null,
+  );
 
   const rule = role === "" ? null : divisiRuleFor(role);
   const title = editing ? "Ubah akun" : "Tambah akun";
@@ -89,21 +100,33 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
     if (busy) return;
     const name = fullName.trim();
     const password = passwordRef.current?.value ?? "";
-    if (!editing && name === "") return fail("Nama lengkap wajib diisi.", `${ids}-name`);
+    if (!editing && name === "")
+      return fail("Nama lengkap wajib diisi.", `${ids}-name`);
     if (role === "") return fail("Pilih role akun.", `${ids}-role`);
     if (rule?.kind !== "none" && divisi === null)
       return fail("Pilih divisi akun.", `${ids}-divisi`);
     if (!editing && password.length < MIN_PASSWORD_LENGTH)
-      return fail(`Password awal minimal ${MIN_PASSWORD_LENGTH} karakter.`, `${ids}-password`);
+      return fail(
+        `Password awal minimal ${MIN_PASSWORD_LENGTH} karakter.`,
+        `${ids}-password`,
+      );
 
     setBusy(true);
     setError(null);
     try {
       if (editing) {
-        const saved = await updateUser(editing.id, buildChanges(editing, { role, divisi, isActive }));
+        const saved = await updateUser(
+          editing.id,
+          buildChanges(editing, { role, divisi, isActive }),
+        );
         onSaved(saved, false);
       } else {
-        const saved = await createUser({ fullName: name, role, divisi, password });
+        const saved = await createUser({
+          fullName: name,
+          role,
+          divisi,
+          password,
+        });
         onSaved(saved, true);
       }
     } catch (caught) {
@@ -118,10 +141,21 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
 
   return (
     <ModalDialog titleId={`${ids}-title`} busy={busy} onClose={onClose}>
-      <form ref={formRef} method="post" noValidate onSubmit={handleSubmit} className="flex flex-col gap-5 p-6 sm:p-8">
+      <form
+        ref={formRef}
+        method="post"
+        noValidate
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-5 p-6 sm:p-8"
+      >
         <div>
-          <p className="font-mono text-xs font-medium tracking-[0.2em] text-teal uppercase">Kelola akun</p>
-          <h2 id={`${ids}-title`} className="mt-1 text-xl font-semibold tracking-tight">
+          <p className="font-mono text-xs font-medium tracking-[0.2em] text-teal uppercase">
+            Kelola akun
+          </p>
+          <h2
+            id={`${ids}-title`}
+            className="mt-1 text-xl font-semibold tracking-tight"
+          >
             {title}
           </h2>
         </div>
@@ -138,8 +172,12 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
 
         {editing ? (
           <div className="animate-fade-up rounded-xl bg-ink/5 px-4 py-3">
-            <p className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">Nama lengkap</p>
-            <p className="mt-0.5 font-semibold wrap-break-word">{editing.fullName}</p>
+            <p className="font-mono text-xs tracking-[0.15em] text-ink/70 uppercase">
+              Nama lengkap
+            </p>
+            <p className="mt-0.5 font-semibold wrap-break-word">
+              {editing.fullName}
+            </p>
           </div>
         ) : (
           <div className="flex animate-fade-up flex-col gap-2">
@@ -160,7 +198,8 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
               className={INPUT_CLASS}
             />
             <p id={`${ids}-name-hint`} className="text-xs text-ink/70">
-              Akhiri dengan kode unik seperti akun lain, contoh: Rina Wulandari TX01. Nama lengkap inilah yang dipakai untuk masuk.
+              Akhiri dengan kode unik seperti akun lain, contoh: Rina Wulandari
+              TX01. Nama lengkap inilah yang dipakai untuk masuk.
             </p>
           </div>
         )}
@@ -187,7 +226,9 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
             label="Divisi"
             value={divisi ?? ""}
             disabled={busy}
-            onChange={(event) => setDivisi((event.target.value || null) as Divisi | null)}
+            onChange={(event) =>
+              setDivisi((event.target.value || null) as Divisi | null)
+            }
             className="animate-fade-up"
           >
             <option value="">Pilih divisi</option>
@@ -201,7 +242,9 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
 
         {rule?.kind === "fixed" && (
           <div className="animate-fade-up rounded-xl bg-ink/5 px-4 py-3 text-sm">
-            Divisi otomatis <span className="font-semibold">{DIVISI_LABEL[rule.divisi]}</span> untuk role ini.
+            Divisi otomatis{" "}
+            <span className="font-semibold">{DIVISI_LABEL[rule.divisi]}</span>{" "}
+            untuk role ini.
           </div>
         )}
 
@@ -222,16 +265,22 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
               className="mt-0.5 size-5 shrink-0 accent-teal"
             />
             <span>
-              <span className="block text-sm font-semibold">{isActive ? "Akun aktif" : "Akun nonaktif"}</span>
+              <span className="block text-sm font-semibold">
+                {isActive ? "Akun aktif" : "Akun nonaktif"}
+              </span>
               <span className="mt-0.5 block text-xs text-ink/70">
-                Akun nonaktif langsung keluar dari semua sesi dan tidak bisa masuk sampai diaktifkan lagi.
+                Akun nonaktif langsung keluar dari semua sesi dan tidak bisa
+                masuk sampai diaktifkan lagi.
               </span>
             </span>
           </label>
         )}
 
         {warning && (
-          <p role="status" className="animate-fade-in rounded-xl bg-yellow/40 px-4 py-3 text-sm text-ink">
+          <p
+            role="status"
+            className="animate-fade-in rounded-xl bg-yellow/40 px-4 py-3 text-sm text-ink"
+          >
             {warning}
           </p>
         )}
@@ -249,7 +298,12 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
         )}
 
         <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onClose} disabled={busy} className={SECONDARY_BUTTON_CLASS}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className={SECONDARY_BUTTON_CLASS}
+          >
             Batal
           </button>
           <button
@@ -267,7 +321,11 @@ export function UserFormDialog({ target, users, onClose, onSaved }: UserFormDial
             {busy ? "Menyimpan…" : editing ? "Simpan perubahan" : "Buat akun"}
           </button>
         </div>
-        {noChanges && <p className="-mt-2 text-right text-xs text-ink/70">Belum ada yang diubah.</p>}
+        {noChanges && (
+          <p className="-mt-2 text-right text-xs text-ink/70">
+            Belum ada yang diubah.
+          </p>
+        )}
       </form>
     </ModalDialog>
   );

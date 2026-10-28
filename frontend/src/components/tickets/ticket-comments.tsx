@@ -13,24 +13,48 @@ import { postTicketMessage } from "@/lib/tickets";
 import { useMobileLayout } from "@/lib/use-mobile-layout";
 import { useVisualViewport } from "@/lib/use-visual-viewport";
 import type { SessionUser } from "@/types/auth.types";
-import type { ReasonLabel, TicketDetail, TicketMessage } from "@/types/ticket.types";
+import type {
+  ReasonLabel,
+  TicketDetail,
+  TicketMessage,
+} from "@/types/ticket.types";
 
 const STICK_TO_BOTTOM_PX = 48;
 
-const REASON_BADGE: Record<ReasonLabel, { text: string; badge: string; block: string }> = {
-  PENGAJUAN: { text: "Alasan pengajuan", badge: "bg-green text-ink", block: "bg-green/15" },
-  MENERIMA: { text: "Alasan menerima", badge: "bg-green text-ink", block: "bg-green/15" },
-  MENOLAK: { text: "Alasan menolak", badge: "bg-red text-mist", block: "bg-red/10" },
+const REASON_BADGE: Record<
+  ReasonLabel,
+  { text: string; badge: string; block: string }
+> = {
+  PENGAJUAN: {
+    text: "Alasan pengajuan",
+    badge: "bg-green text-ink",
+    block: "bg-green/15",
+  },
+  MENERIMA: {
+    text: "Alasan menerima",
+    badge: "bg-green text-ink",
+    block: "bg-green/15",
+  },
+  MENOLAK: {
+    text: "Alasan menolak",
+    badge: "bg-red text-mist",
+    block: "bg-red/10",
+  },
 };
 
 function isOwn(user: SessionUser, message: TicketMessage): boolean {
-  return message.author.fullName === user.fullName && message.author.divisi === user.divisi;
+  return (
+    message.author.fullName === user.fullName &&
+    message.author.divisi === user.divisi
+  );
 }
 
 function authorMeta(user: SessionUser, message: TicketMessage): string {
   const time = formatDateWita(message.createdAt);
   if (isOwn(user, message)) return `Anda · ${time}`;
-  const divisi = message.author.divisi ? ` (${DIVISI_LABEL[message.author.divisi]})` : "";
+  const divisi = message.author.divisi
+    ? ` (${DIVISI_LABEL[message.author.divisi]})`
+    : "";
   return `${message.author.fullName}${divisi} · ${time}`;
 }
 
@@ -61,15 +85,21 @@ function MessageItem({
   const meta = authorMeta(user, message);
 
   if (message.kind === "ALASAN") {
-    const reason = message.reasonLabel ? REASON_BADGE[message.reasonLabel] : null;
+    const reason = message.reasonLabel
+      ? REASON_BADGE[message.reasonLabel]
+      : null;
     return (
       <li className={`rounded-xl px-4 py-3 ${reason?.block ?? "bg-ink/5"}`}>
         {reason && (
-          <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-semibold ${reason.badge}`}>
+          <span
+            className={`inline-block rounded-full px-3 py-0.5 text-xs font-semibold ${reason.badge}`}
+          >
             {reason.text}
           </span>
         )}
-        <p className="mt-2 text-sm leading-relaxed whitespace-pre-line wrap-break-word">{message.body}</p>
+        <p className="mt-2 text-sm leading-relaxed whitespace-pre-line wrap-break-word">
+          {message.body}
+        </p>
         <p className="mt-2 text-xs text-ink/70">{meta}</p>
       </li>
     );
@@ -77,7 +107,9 @@ function MessageItem({
 
   const own = isOwn(user, message);
   return (
-    <li className={`flex items-end gap-2 ${own ? "justify-end" : "justify-start"} ${grouped ? "-mt-2" : ""}`}>
+    <li
+      className={`flex items-end gap-2 ${own ? "justify-end" : "justify-start"} ${grouped ? "-mt-2" : ""}`}
+    >
       {!own && (
         <span
           aria-hidden="true"
@@ -86,10 +118,16 @@ function MessageItem({
           {initials(message.author.fullName)}
         </span>
       )}
-      <div className={`flex min-w-0 max-w-[85%] flex-col ${own ? "items-end" : "items-start"}`}>
+      <div
+        className={`flex min-w-0 max-w-[85%] flex-col ${own ? "items-end" : "items-start"}`}
+      >
         {!grouped && <p className="mb-1 text-xs text-ink/70">{meta}</p>}
-        <div className={`rounded-2xl px-4 py-2.5 ${own ? "bg-teal text-mist" : "border border-ink/15 bg-mist"}`}>
-          <p className="text-sm leading-relaxed whitespace-pre-line wrap-break-word">{message.body}</p>
+        <div
+          className={`rounded-2xl px-4 py-2.5 ${own ? "bg-teal text-mist" : "border border-ink/15 bg-mist"}`}
+        >
+          <p className="text-sm leading-relaxed whitespace-pre-line wrap-break-word">
+            {message.body}
+          </p>
         </div>
       </div>
     </li>
@@ -115,7 +153,14 @@ interface TicketCommentsProps {
   onBack: () => void;
 }
 
-export function TicketComments({ ticket, messages: state, active, onSent, onChanged, onBack }: TicketCommentsProps) {
+export function TicketComments({
+  ticket,
+  messages: state,
+  active,
+  onSent,
+  onChanged,
+  onBack,
+}: TicketCommentsProps) {
   const router = useRouter();
   const user = useUser();
   const mobile = useMobileLayout();
@@ -129,9 +174,11 @@ export function TicketComments({ ticket, messages: state, active, onSent, onChan
 
   const ticketId = ticket.id;
   const all = state.status === "ready" ? state.messages : null;
-  const pinned = all?.find((message) => message.reasonLabel === "PENGAJUAN") ?? null;
+  const pinned =
+    all?.find((message) => message.reasonLabel === "PENGAJUAN") ?? null;
   const messages = all && all.filter((message) => message !== pinned);
-  const lastId = messages && messages.length > 0 ? messages[messages.length - 1].id : null;
+  const lastId =
+    messages && messages.length > 0 ? messages[messages.length - 1].id : null;
   const ready = all !== null;
   const isSuperadmin = user.role === "SUPERADMIN";
 
@@ -151,7 +198,10 @@ export function TicketComments({ ticket, messages: state, active, onSent, onChan
 
   function trackScroll() {
     const list = listRef.current;
-    if (list) stickRef.current = list.scrollHeight - list.scrollTop - list.clientHeight <= STICK_TO_BOTTOM_PX;
+    if (list)
+      stickRef.current =
+        list.scrollHeight - list.scrollTop - list.clientHeight <=
+        STICK_TO_BOTTOM_PX;
   }
 
   async function send() {
@@ -170,7 +220,11 @@ export function TicketComments({ ticket, messages: state, active, onSent, onChan
         return;
       }
       setSendError(errorMessage(caught));
-      if (caught instanceof ApiError && (caught.status === 404 || caught.status === 409)) onChanged();
+      if (
+        caught instanceof ApiError &&
+        (caught.status === 404 || caught.status === 409)
+      )
+        onChanged();
     } finally {
       setSending(false);
     }
@@ -184,7 +238,16 @@ export function TicketComments({ ticket, messages: state, active, onSent, onChan
         aria-label="Kembali ke detail pengaduan"
         className="grid size-10 shrink-0 place-items-center rounded-xl text-teal transition-[background-color,transform] duration-200 ease-spring hover:bg-ink/5 active:scale-95"
       >
-        <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="size-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M15 18l-6-6 6-6" />
         </svg>
       </button>
@@ -210,13 +273,20 @@ export function TicketComments({ ticket, messages: state, active, onSent, onChan
         </div>
       )}
       {state.status === "error" && (
-        <p role="alert" className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
+        <p
+          role="alert"
+          className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine"
+        >
           {state.message}
         </p>
       )}
       {state.status === "ready" && state.stale && (
-        <p role="status" className="rounded-xl bg-ink/5 px-4 py-2 text-sm text-ink/70">
-          Gagal memperbarui komentar. Daftar di bawah mungkin belum yang terbaru.
+        <p
+          role="status"
+          className="rounded-xl bg-ink/5 px-4 py-2 text-sm text-ink/70"
+        >
+          Gagal memperbarui komentar. Daftar di bawah mungkin belum yang
+          terbaru.
         </p>
       )}
       {messages && (
@@ -227,7 +297,11 @@ export function TicketComments({ ticket, messages: state, active, onSent, onChan
           className={`scroll-pill flex flex-col gap-4 overflow-y-auto overscroll-contain rounded-2xl bg-ink/5 p-4 sm:p-5 ${listHeight}`}
         >
           {pinned && <MessageItem user={user} message={pinned} />}
-          {messages.length === 0 && <li className="py-6 text-center text-sm text-ink/70">Belum ada komentar.</li>}
+          {messages.length === 0 && (
+            <li className="py-6 text-center text-sm text-ink/70">
+              Belum ada komentar.
+            </li>
+          )}
           {messages.map((message, index) => (
             <MessageItem
               key={message.id}
@@ -257,7 +331,14 @@ export function TicketComments({ ticket, messages: state, active, onSent, onChan
 
   return createPortal(
     <div
-      style={viewport ? ({ "--vvh": `${viewport.height}px`, "--vvt": `${viewport.offsetTop}px` } as CSSProperties) : undefined}
+      style={
+        viewport
+          ? ({
+              "--vvh": `${viewport.height}px`,
+              "--vvt": `${viewport.offsetTop}px`,
+            } as CSSProperties)
+          : undefined
+      }
       className="fixed inset-x-0 top-[var(--vvt,0px)] z-50 flex h-[var(--vvh,100dvh)] flex-col gap-3 bg-mist px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(1.75rem,env(safe-area-inset-bottom))]"
     >
       {body}

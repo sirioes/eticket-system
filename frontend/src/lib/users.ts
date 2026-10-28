@@ -1,5 +1,9 @@
 import { api } from "@/lib/api";
-import type { CreateUserInput, ManagedUser, UpdateUserInput } from "@/types/user.types";
+import type {
+  CreateUserInput,
+  ManagedUser,
+  UpdateUserInput,
+} from "@/types/user.types";
 
 const USER_ID_PATTERN = /^[1-9][0-9]{0,9}$/;
 
@@ -22,10 +26,16 @@ export function createUser(input: CreateUserInput): Promise<ManagedUser> {
   });
 }
 
-export function updateUser(id: number, input: UpdateUserInput): Promise<ManagedUser> {
+export function updateUser(
+  id: number,
+  input: UpdateUserInput,
+): Promise<ManagedUser> {
   return api.patch<ManagedUser>(userPath(id), input);
 }
 
-export function resetUserPassword(id: number, newPassword: string): Promise<void> {
+export function resetUserPassword(
+  id: number,
+  newPassword: string,
+): Promise<void> {
   return api.patch<void>(`${userPath(id)}/reset-password`, { newPassword });
 }
