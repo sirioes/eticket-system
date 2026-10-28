@@ -151,7 +151,7 @@ export function AttachmentPreviewDialog({ ticketId, source, file, kind, onClose 
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-ink/70">
-            {kind === "pdf" ? "PDF tidak tampil di perangkatmu? Unduh file untuk membukanya." : ""}
+            {kind === "pdf" ? "PDF tidak tampil pada perangkat Anda? Unduh file untuk membukanya." : ""}
           </p>
           <button
             type="button"

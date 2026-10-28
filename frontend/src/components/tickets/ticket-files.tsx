@@ -10,7 +10,6 @@ import {
 } from "@/components/tickets/attachment-preview-dialog";
 import { TicketFileRow } from "@/components/tickets/ticket-file-row";
 import { PRIMARY_BUTTON_CLASS } from "@/components/ui/button-class";
-import { CARD_CLASS } from "@/components/ui/card-class";
 import { errorMessage, isUnauthorized, type DownloadedFile } from "@/lib/api";
 import { addFiles, formatFileSize } from "@/lib/attachment-files";
 import { saveBlob } from "@/lib/download";
@@ -119,125 +118,120 @@ export function TicketFiles({ ticket, refreshing, onChanged }: TicketFilesProps)
   }
 
   return (
-    <section
-      aria-labelledby="files-title"
-      className={`${CARD_CLASS} flex animate-fade-up flex-col gap-5 [animation-delay:240ms]`}
-    >
-      <h2 id="files-title" className="text-lg font-semibold">
-        Berkas
-      </h2>
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 xl:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="text-lg font-semibold">Dokumen Pengaduan</h2>
+            <span className="shrink-0 font-mono text-xs text-ink/70">
+              {ticket.attachments.length}/{MAX_ATTACHMENTS_PER_TICKET} file
+            </span>
+          </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-semibold">Dokumen Pengaduan</h3>
-          <span className="font-mono text-xs text-ink/70">
-            {ticket.attachments.length}/{MAX_ATTACHMENTS_PER_TICKET} file
-          </span>
-        </div>
-
-        {ticket.attachments.length === 0 ? (
-          <p className="rounded-2xl border-2 border-dashed border-teal/25 p-4 text-center text-sm text-ink/70">
-            Pengaduan ini belum memiliki dokumen pengaduan.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {ticket.attachments.map((attachment) => (
-              <TicketFileRow
-                key={attachment.id}
-                fileName={attachment.fileName}
-                mimeType={attachment.mimeType}
-                meta={formatFileSize(attachment.size)}
-                downloading={downloading === attachment.id}
-                downloadDisabled={downloading !== null}
-                onPreview={(kind) => setPreviewing({ source: "attachment", file: attachment, kind })}
-                onDownload={() => void handleDownload(attachment, () => downloadAttachment(ticket.id, attachment.id))}
-              />
-            ))}
-          </ul>
-        )}
-
-        {report && report.uploaded > 0 && (
-          <p role="status" className="animate-pop-in rounded-xl bg-green/15 px-4 py-3 text-sm font-medium text-ink">
-            {report.uploaded} dokumen pengaduan berhasil diunggah.
-          </p>
-        )}
-        {report && report.failures.length > 0 && (
-          <div role="alert" className="animate-shake rounded-xl bg-red/10 px-4 py-3 text-sm text-wine">
-            <p className="font-medium">Dokumen pengaduan berikut gagal diunggah:</p>
-            <ul className="mt-2 list-disc pl-5">
-              {report.failures.map((failure, index) => (
-                <li key={index} className="wrap-break-word">
-                  {failure}
-                </li>
+          {ticket.attachments.length === 0 ? (
+            <p className="rounded-2xl border-2 border-dashed border-teal/25 p-4 text-center text-sm text-ink/70">
+              Pengaduan ini belum memiliki dokumen pengaduan.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {ticket.attachments.map((attachment) => (
+                <TicketFileRow
+                  key={attachment.id}
+                  fileName={attachment.fileName}
+                  mimeType={attachment.mimeType}
+                  meta={formatFileSize(attachment.size)}
+                  downloading={downloading === attachment.id}
+                  downloadDisabled={downloading !== null}
+                  onPreview={(kind) => setPreviewing({ source: "attachment", file: attachment, kind })}
+                  onDownload={() => void handleDownload(attachment, () => downloadAttachment(ticket.id, attachment.id))}
+                />
               ))}
             </ul>
-          </div>
-        )}
+          )}
 
-        {canUpload && (
-          <div className="flex flex-col gap-4 pt-2">
-            <div>
-              <h4 className="text-sm font-semibold">Tambah dokumen pengaduan</h4>
-              <p className="mt-1 text-sm text-ink/70">
-                Dokumen masih bisa ditambahkan sampai manajer Divisi {DIVISI_LABEL[ticket.fromDivisi]}{" "}
-                menyetujui pengaduan. Sisa {remaining} file.
-              </p>
+          {report && report.uploaded > 0 && (
+            <p role="status" className="animate-pop-in rounded-xl bg-green/15 px-4 py-3 text-sm font-medium text-ink">
+              {report.uploaded} dokumen pengaduan berhasil diunggah.
+            </p>
+          )}
+          {report && report.failures.length > 0 && (
+            <div role="alert" className="animate-shake rounded-xl bg-red/10 px-4 py-3 text-sm text-wine">
+              <p className="font-medium">Dokumen pengaduan berikut gagal diunggah:</p>
+              <ul className="mt-2 list-disc pl-5">
+                {report.failures.map((failure, index) => (
+                  <li key={index} className="wrap-break-word">
+                    {failure}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <AttachmentDropzone
-              files={files}
-              errors={fileErrors}
-              disabled={uploading || refreshing}
-              maxFiles={remaining}
-              inputLabel="Pilih file dokumen pengaduan"
-              onAdd={handleAdd}
-              onRemove={handleRemove}
-            />
-            {files.length > 0 && (
-              <button
-                type="button"
-                onClick={handleUpload}
-                disabled={uploading || refreshing}
-                aria-busy={uploading}
-                className={`${PRIMARY_BUTTON_CLASS} self-end`}
-              >
-                {uploading && (
-                  <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist" />
-                )}
-                {uploading ? "Mengunggah…" : `Unggah ${files.length} dokumen`}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+          )}
 
-      <div className="flex flex-col gap-3 border-t border-ink/10 pt-5">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-semibold">Dokumen Penyelesaian</h3>
-          <span className="font-mono text-xs text-ink/70">
-            {ticket.completionFiles.length}/{MAX_COMPLETION_FILES} file
-          </span>
+          {canUpload && (
+            <div className="flex flex-col gap-4 pt-2">
+              <div>
+                <h3 className="text-sm font-semibold">Tambah dokumen pengaduan</h3>
+                <p className="mt-1 text-sm text-ink/70">
+                  Dokumen masih bisa ditambahkan sampai manajer Divisi {DIVISI_LABEL[ticket.fromDivisi]}{" "}
+                  menyetujui pengaduan. Sisa {remaining} file.
+                </p>
+              </div>
+              <AttachmentDropzone
+                files={files}
+                errors={fileErrors}
+                disabled={uploading || refreshing}
+                maxFiles={remaining}
+                inputLabel="Pilih file dokumen pengaduan"
+                onAdd={handleAdd}
+                onRemove={handleRemove}
+              />
+              {files.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleUpload}
+                  disabled={uploading || refreshing}
+                  aria-busy={uploading}
+                  className={`${PRIMARY_BUTTON_CLASS} self-end`}
+                >
+                  {uploading && (
+                    <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-mist/40 border-t-mist" />
+                  )}
+                  {uploading ? "Mengunggah…" : `Unggah ${files.length} dokumen`}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {ticket.completionFiles.length === 0 ? (
-          <p className="rounded-2xl border-2 border-dashed border-teal/25 p-4 text-center text-sm text-ink/70">
-            {completionEmptyMessage(ticket)}
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {ticket.completionFiles.map((file) => (
-              <TicketFileRow
-                key={file.id}
-                fileName={file.fileName}
-                mimeType={file.mimeType}
-                meta={formatFileSize(file.size)}
-                downloading={downloading === file.id}
-                downloadDisabled={downloading !== null}
-                onPreview={(kind) => setPreviewing({ source: "completion", file, kind })}
-                onDownload={() => void handleDownload(file, () => downloadCompletionFile(ticket.id, file.id))}
-              />
-            ))}
-          </ul>
-        )}
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="text-lg font-semibold">Dokumen Penyelesaian</h2>
+            <span className="shrink-0 font-mono text-xs text-ink/70">
+              {ticket.completionFiles.length}/{MAX_COMPLETION_FILES} file
+            </span>
+          </div>
+
+          {ticket.completionFiles.length === 0 ? (
+            <p className="rounded-2xl border-2 border-dashed border-teal/25 p-4 text-center text-sm text-ink/70">
+              {completionEmptyMessage(ticket)}
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {ticket.completionFiles.map((file) => (
+                <TicketFileRow
+                  key={file.id}
+                  fileName={file.fileName}
+                  mimeType={file.mimeType}
+                  meta={formatFileSize(file.size)}
+                  downloading={downloading === file.id}
+                  downloadDisabled={downloading !== null}
+                  onPreview={(kind) => setPreviewing({ source: "completion", file, kind })}
+                  onDownload={() => void handleDownload(file, () => downloadCompletionFile(ticket.id, file.id))}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       {downloadError && (
@@ -256,6 +250,6 @@ export function TicketFiles({ ticket, refreshing, onChanged }: TicketFilesProps)
           onClose={() => setPreviewing(null)}
         />
       )}
-    </section>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import { previewKind, type PreviewKind } from "@/components/tickets/attachment-preview-dialog";
 import { OUTLINE_BUTTON_CLASS } from "@/components/ui/button-class";
+import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 
 const FILE_ICON_PATH = "M6 3h9l4 4v14H6zM15 3v4h4";
 const DOWNLOAD_ICON_PATH = "M12 4v11M7 10l5 5 5-5M5 20h14";
@@ -17,8 +18,15 @@ const ICON_TONE: Record<string, string> = {
   "image/webp": "bg-aqua text-ink",
 };
 
+const TYPE_LABEL: Record<string, string> = {
+  "application/pdf": "PDF",
+  [XLSX_MIME]: "Excel",
+  [DOCX_MIME]: "Word",
+};
+
 const FALLBACK_TONE = "bg-ink text-mist";
-const NO_PREVIEW_HINT = "Pratinjau hanya tersedia untuk PDF dan gambar";
+const NO_PREVIEW_HINT = "Pratinjau hanya tersedia untuk PDF dan gambar.";
+const NO_PREVIEW_HINT_TOUCH = "Pratinjau hanya tersedia untuk gambar.";
 
 function IconPath({ path, className }: { path: string; className: string }) {
   return (
@@ -47,21 +55,24 @@ export function TicketFileRow({
   onPreview,
   onDownload,
 }: TicketFileRowProps) {
-  const kind = previewKind(mimeType);
+  const coarsePointer = useCoarsePointer();
+  const detectedKind = previewKind(mimeType);
+  const kind = detectedKind === "pdf" && coarsePointer ? null : detectedKind;
+  const typeLabel = Object.hasOwn(TYPE_LABEL, mimeType) ? TYPE_LABEL[mimeType] : "Berkas";
   const tone = Object.hasOwn(ICON_TONE, mimeType) ? ICON_TONE[mimeType] : FALLBACK_TONE;
   const text = (
     <span className="min-w-0 flex-1">
       <span title={fileName} className="block truncate text-sm font-medium">
         {fileName}
       </span>
-      <span className="mt-0.5 block truncate font-mono text-xs text-ink/70">{meta}</span>
+      <span className="mt-0.5 block truncate font-mono text-xs text-ink/70">{kind === null ? `${typeLabel} · ${meta}` : meta}</span>
     </span>
   );
 
   return (
     <li className="flex items-center gap-3 rounded-2xl border border-ink/10 p-3">
       {kind === null ? (
-        <span aria-hidden="true" title={NO_PREVIEW_HINT} className={`grid size-10 shrink-0 place-items-center rounded-xl ${tone}`}>
+        <span aria-hidden="true" title={coarsePointer ? NO_PREVIEW_HINT_TOUCH : NO_PREVIEW_HINT} className={`grid size-10 shrink-0 place-items-center rounded-xl ${tone}`}>
           <IconPath path={FILE_ICON_PATH} className="size-5" />
         </span>
       ) : (
