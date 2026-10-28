@@ -1,22 +1,21 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/layout/user-context";
-import { CARD_CLASS } from "@/components/ui/card-class";
+import { CommentComposer } from "@/components/tickets/comment-composer";
+import type { MessagesState } from "@/components/tickets/use-ticket-messages";
 import { ApiError, errorMessage, isUnauthorized } from "@/lib/api";
 import { DIVISI_LABEL, formatDateWita } from "@/lib/labels";
 import { COMMENT_MAX_LENGTH } from "@/lib/ticket-rules";
-import { listTicketMessages, postTicketMessage } from "@/lib/tickets";
+import { postTicketMessage } from "@/lib/tickets";
+import { useMobileLayout } from "@/lib/use-mobile-layout";
+import { useVisualViewport } from "@/lib/use-visual-viewport";
 import type { SessionUser } from "@/types/auth.types";
 import type { ReasonLabel, TicketDetail, TicketMessage } from "@/types/ticket.types";
 
-type LoadState =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "ready"; messages: TicketMessage[] };
-
-const POLL_INTERVAL_MS = 10_000;
+const STICK_TO_BOTTOM_PX = 48;
 
 const REASON_BADGE: Record<ReasonLabel, { text: string; badge: string; block: string }> = {
   PENGAJUAN: { text: "Alasan pengajuan", badge: "bg-green text-ink", block: "bg-green/15" },
@@ -37,8 +36,8 @@ function authorMeta(user: SessionUser, message: TicketMessage): string {
 
 function closedNotice(ticket: TicketDetail): string {
   return ticket.stage === "DITOLAK"
-    ? "Komentar ditutup karena pengaduan sudah ditolak. Riwayat komentar tetap dapat dibaca."
-    : "Komentar ditutup karena pengaduan sudah selesai. Riwayat komentar tetap dapat dibaca.";
+    ? "Komentar ditutup karena pengaduan ditolak."
+    : "Komentar ditutup karena pengaduan sudah selesai.";
 }
 
 function initials(fullName: string): string {
@@ -89,7 +88,7 @@ function MessageItem({
       )}
       <div className={`flex min-w-0 max-w-[85%] flex-col ${own ? "items-end" : "items-start"}`}>
         {!grouped && <p className="mb-1 text-xs text-ink/70">{meta}</p>}
-        <div className={`rounded-2xl px-4 py-2.5 ${own ? "bg-teal/15" : "bg-ink/5"}`}>
+        <div className={`rounded-2xl px-4 py-2.5 ${own ? "bg-teal text-mist" : "border border-ink/15 bg-mist"}`}>
           <p className="text-sm leading-relaxed whitespace-pre-line wrap-break-word">{message.body}</p>
         </div>
       </div>
@@ -109,89 +108,62 @@ function sameSender(a: TicketMessage | undefined, b: TicketMessage): boolean {
 
 interface TicketCommentsProps {
   ticket: TicketDetail;
+  messages: MessagesState;
+  active: boolean;
+  onSent: () => void;
   onChanged: () => void;
+  onBack: () => void;
 }
 
-export function TicketComments({ ticket, onChanged }: TicketCommentsProps) {
+export function TicketComments({ ticket, messages: state, active, onSent, onChanged, onBack }: TicketCommentsProps) {
   const router = useRouter();
   const user = useUser();
-  const titleId = useId();
-  const fieldId = useId();
+  const mobile = useMobileLayout();
+  const overlay = mobile && active;
+  const viewport = useVisualViewport(overlay);
   const listRef = useRef<HTMLUListElement>(null);
-  const [tick, setTick] = useState(0);
-  const [load, setLoad] = useState<LoadState>({ status: "loading" });
-  const [expanded, setExpanded] = useState(false);
-  const [overflowing, setOverflowing] = useState(false);
+  const stickRef = useRef(true);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
   const ticketId = ticket.id;
-  const requestKey = `${ticketId}#${tick}`;
-  const all = load.status === "ready" ? load.messages : null;
+  const all = state.status === "ready" ? state.messages : null;
   const pinned = all?.find((message) => message.reasonLabel === "PENGAJUAN") ?? null;
   const messages = all && all.filter((message) => message !== pinned);
   const lastId = messages && messages.length > 0 ? messages[messages.length - 1].id : null;
-  const canCompose = ticket.canComment;
+  const ready = all !== null;
   const isSuperadmin = user.role === "SUPERADMIN";
-  const trimmedLength = [...draft.trim()].length;
-
-  useEffect(() => {
-    let active = true;
-    listTicketMessages(ticketId)
-      .then((data) => {
-        if (active) setLoad({ status: "ready", messages: data });
-      })
-      .catch((caught: unknown) => {
-        if (!active) return;
-        if (isUnauthorized(caught)) {
-          router.replace("/login?reason=expired");
-          return;
-        }
-        setLoad((previous) =>
-          previous.status === "ready" ? previous : { status: "error", message: errorMessage(caught) },
-        );
-      });
-    return () => {
-      active = false;
-    };
-  }, [ticketId, requestKey, router]);
-
-  useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState === "visible") setTick((value) => value + 1);
-    };
-    const timer = window.setInterval(refresh, POLL_INTERVAL_MS);
-    document.addEventListener("visibilitychange", refresh);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", refresh);
-    };
-  }, []);
 
   useEffect(() => {
     const list = listRef.current;
-    if (list) list.scrollTop = list.scrollHeight;
-  }, [lastId]);
+    if (list && active && stickRef.current) list.scrollTop = list.scrollHeight;
+  }, [lastId, active, ready, mobile]);
 
   useEffect(() => {
-    const list = listRef.current;
-    if (!list || expanded) return;
-    const observer = new ResizeObserver(() => setOverflowing(list.scrollHeight > list.clientHeight + 1));
-    observer.observe(list);
-    return () => observer.disconnect();
-  }, [lastId, expanded]);
+    if (!overlay) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [overlay]);
 
-  async function send(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function trackScroll() {
+    const list = listRef.current;
+    if (list) stickRef.current = list.scrollHeight - list.scrollTop - list.clientHeight <= STICK_TO_BOTTOM_PX;
+  }
+
+  async function send() {
     const body = draft.trim();
-    if (sending || body === "" || trimmedLength > COMMENT_MAX_LENGTH) return;
+    if (sending || body === "" || [...body].length > COMMENT_MAX_LENGTH) return;
     setSending(true);
     setSendError(null);
     try {
       await postTicketMessage(ticketId, body);
       setDraft("");
-      setTick((value) => value + 1);
+      stickRef.current = true;
+      onSent();
     } catch (caught) {
       if (isUnauthorized(caught)) {
         router.replace("/login?reason=expired");
@@ -204,118 +176,92 @@ export function TicketComments({ ticket, onChanged }: TicketCommentsProps) {
     }
   }
 
-  return (
-    <section
-      aria-labelledby={titleId}
-      className={`${CARD_CLASS} flex animate-fade-up flex-col gap-4 [animation-delay:100ms]`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <h2 id={titleId} className="text-lg font-semibold">
-          Komentar
-        </h2>
-        {(expanded || overflowing) && (
-          <button
-            type="button"
-            aria-expanded={expanded}
-            onClick={() => setExpanded((value) => !value)}
-            className="flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-teal transition-colors duration-200 hover:bg-teal/10"
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d={expanded ? "M6 14l6-6 6 6" : "M6 10l6 6 6-6"} />
-            </svg>
-            {expanded ? "Perkecil" : "Perbesar"}
-          </button>
-        )}
-      </div>
+  const heading = mobile ? (
+    <div className="flex items-center gap-2 border-b border-ink/10 pb-2">
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Kembali ke detail pengaduan"
+        className="grid size-10 shrink-0 place-items-center rounded-xl text-teal transition-[background-color,transform] duration-200 ease-spring hover:bg-ink/5 active:scale-95"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
+      <h2 className="text-lg font-semibold">Komentar</h2>
+    </div>
+  ) : (
+    <h2 className="text-lg font-semibold">Komentar</h2>
+  );
 
-      {pinned && (
-        <ul aria-label="Alasan pengajuan" className="shrink-0">
-          <MessageItem user={user} message={pinned} />
+  const listHeight = mobile ? "min-h-0 flex-1" : "h-130";
+
+  const body = (
+    <>
+      {heading}
+
+      {state.status === "loading" && (
+        <div className={`grid place-items-center ${listHeight}`}>
+          <span
+            role="status"
+            aria-label="Memuat komentar"
+            className="size-6 animate-spin rounded-full border-3 border-teal/20 border-t-teal"
+          />
+        </div>
+      )}
+      {state.status === "error" && (
+        <p role="alert" className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
+          {state.message}
+        </p>
+      )}
+      {state.status === "ready" && state.stale && (
+        <p role="status" className="rounded-xl bg-ink/5 px-4 py-2 text-sm text-ink/70">
+          Gagal memperbarui komentar. Daftar di bawah mungkin belum yang terbaru.
+        </p>
+      )}
+      {messages && (
+        <ul
+          ref={listRef}
+          aria-label="Daftar komentar"
+          onScroll={trackScroll}
+          className={`scroll-pill flex flex-col gap-4 overflow-y-auto overscroll-contain rounded-2xl bg-ink/5 p-4 sm:p-5 ${listHeight}`}
+        >
+          {pinned && <MessageItem user={user} message={pinned} />}
+          {messages.length === 0 && <li className="py-6 text-center text-sm text-ink/70">Belum ada komentar.</li>}
+          {messages.map((message, index) => (
+            <MessageItem
+              key={message.id}
+              user={user}
+              message={message}
+              grouped={sameSender(messages[index - 1], message)}
+            />
+          ))}
         </ul>
       )}
 
-      <div className="shrink-0">
-        {load.status === "loading" && (
-          <div className="grid place-items-center py-6">
-            <span
-              role="status"
-              aria-label="Memuat komentar"
-              className="size-6 animate-spin rounded-full border-3 border-teal/20 border-t-teal"
-            />
-          </div>
-        )}
-        {load.status === "error" && (
-          <p role="alert" className="rounded-xl bg-red/10 px-4 py-3 text-sm font-medium text-wine">
-            {load.message}
-          </p>
-        )}
-        {messages && messages.length === 0 && (
-          <p className="py-6 text-center text-sm text-ink/70">Belum ada komentar.</p>
-        )}
-        {messages && messages.length > 0 && (
-          <ul
-            ref={listRef}
-            aria-label="Daftar komentar"
-            className={`scroll-pill flex flex-col gap-3 overflow-y-auto pr-1 ${expanded ? "max-h-[min(34rem,70dvh)]" : "max-h-56"}`}
-          >
-            {messages.map((message, index) => (
-              <MessageItem
-                key={message.id}
-                user={user}
-                message={message}
-                grouped={sameSender(messages[index - 1], message)}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {canCompose && (
-        <form onSubmit={send} className="flex flex-col gap-1.5 border-t border-ink/10 pt-3">
-          <label htmlFor={fieldId} className="sr-only">
-            Komentar
-          </label>
-          <div className="flex items-end gap-2 rounded-xl border border-ink/15 bg-ink/5 p-1.5 transition-[border-color,box-shadow] duration-200 ease-smooth focus-within:border-teal focus-within:shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-teal)_18%,transparent)]">
-            <textarea
-              id={fieldId}
-              value={draft}
-              maxLength={COMMENT_MAX_LENGTH}
-              disabled={sending}
-              rows={1}
-              placeholder="Tulis komentar…"
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                  event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
-                }
-              }}
-              className="scroll-pill field-sizing-content max-h-28 min-h-8 flex-1 resize-none bg-transparent px-2 py-1 text-sm outline-none disabled:opacity-60"
-            />
-            <button
-              type="submit"
-              disabled={sending || trimmedLength === 0}
-              aria-busy={sending}
-              className="flex h-8 shrink-0 items-center justify-center gap-2 rounded-lg bg-teal px-4 text-sm font-semibold text-mist transition-[background-color,transform] duration-200 ease-smooth hover:bg-ink active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {sending && (
-                <span aria-hidden="true" className="size-3.5 animate-spin rounded-full border-2 border-mist/40 border-t-mist" />
-              )}
-              {sending ? "Mengirim…" : "Kirim"}
-            </button>
-          </div>
-          {sendError && (
-            <p key={sendError} role="alert" className="animate-shake text-sm font-medium text-wine">
-              {sendError}
-            </p>
-          )}
-          <p className="text-xs text-ink/70">Komentar tidak dapat diubah atau dihapus setelah dikirim.</p>
-        </form>
+      {!isSuperadmin && (
+        <CommentComposer
+          draft={draft}
+          sending={sending}
+          error={sendError}
+          closedNotice={ticket.canComment ? null : closedNotice(ticket)}
+          onDraftChange={setDraft}
+          onSubmit={() => void send()}
+        />
       )}
+    </>
+  );
 
-      {!canCompose && !isSuperadmin && (
-        <p className="border-t border-ink/10 pt-4 text-sm text-ink/70">{closedNotice(ticket)}</p>
-      )}
-    </section>
+  if (!mobile) return <div className="flex flex-col gap-4">{body}</div>;
+  if (!active) return null;
+
+  return createPortal(
+    <div
+      style={viewport ? ({ "--vvh": `${viewport.height}px`, "--vvt": `${viewport.offsetTop}px` } as CSSProperties) : undefined}
+      className="fixed inset-x-0 top-[var(--vvt,0px)] z-50 flex h-[var(--vvh,100dvh)] flex-col gap-3 bg-mist px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(1.75rem,env(safe-area-inset-bottom))]"
+    >
+      {body}
+    </div>,
+    document.body,
   );
 }
