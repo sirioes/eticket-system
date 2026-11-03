@@ -18,6 +18,7 @@ function buildAdapter() {
     password: decodeURIComponent(url.password),
     database: url.pathname.replace(/^\//, ''),
     ssl: buildSsl(),
+    allowPublicKeyRetrieval: true,
     connectTimeout: 15000,
     acquireTimeout: 20000,
   });
