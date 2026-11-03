@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const backendUrl = process.env.BACKEND_URL ?? "http://localhost:3001";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${backendUrl}/:path*` }];
   },
@@ -11,7 +13,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: [
+        headers: [ 
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
         ],
