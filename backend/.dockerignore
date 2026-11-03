@@ -1,0 +1,13 @@
+node_modules
+dist
+src/generated/prisma
+.env
+.env.*
+!.env.example
+uploads
+certs
+*.tsbuildinfo
+prisma/users.csv
+.git
+.github
+coverage
