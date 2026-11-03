@@ -1,0 +1,54 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Asia/Makassar
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      target: builder
+    command: sh -c "npx prisma generate --config prisma7.config.ts && npm run start:dev"
+    env_file: .env
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      target: builder
+    command: npm run dev
+    env_file: .env
+    environment:
+      - PORT=3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
