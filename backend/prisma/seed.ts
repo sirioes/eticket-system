@@ -24,6 +24,7 @@ function buildAdapter() {
     password: decodeURIComponent(url.password),
     database: url.pathname.replace(/^\//, ''),
     ssl: buildSsl(),
+    allowPublicKeyRetrieval: true,
   });
 }
 
