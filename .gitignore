@@ -17,3 +17,6 @@ uploads/
 # OS/editor
 .DS_Store
 .vscode/
+# production
+.env.production
+backups/
