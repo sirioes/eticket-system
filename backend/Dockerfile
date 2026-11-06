@@ -16,6 +16,12 @@ RUN npx prisma generate --config prisma7.config.ts
 
 RUN npm run build
 
+FROM builder AS migrate
+
+USER node
+
+CMD ["npx", "prisma", "migrate", "deploy", "--config", "prisma7.config.ts"]
+
 FROM node:24.22.1-bookworm-slim AS runner
 
 RUN apt-get update \
@@ -37,7 +43,7 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 
 RUN mkdir -p uploads \
-    && chown -R app:app /app
+    && chown app:app uploads
 
 USER app
 
