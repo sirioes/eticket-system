@@ -42,16 +42,16 @@ compose exec -T mysql sh -c 'exec env MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -ur
 gunzip -c "$sql_file" | compose exec -T mysql sh -c 'exec env MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot --default-character-set=utf8mb4 "$MYSQL_DATABASE"'
 
 if [ -f "$uploads_file" ]; then
-  if docker volume inspect "$UPLOADS_VOLUME" >/dev/null 2>&1; then
-    log "Restoring uploads"
-    docker run --rm \
-      -e FILE="${uploads_file##*/}" \
-      -v "$UPLOADS_VOLUME":/data \
-      -v "$(cd "$(dirname "$uploads_file")" && pwd)":/backup:ro \
-      alpine:3 sh -c 'find /data -mindepth 1 -delete && tar xzf "/backup/$FILE" -C /data' >&2
-  else
-    log "WARNING: uploads volume does not exist yet. Start the stack once, then run restore again to restore uploads."
-  fi
+  log "Restoring uploads"
+  docker volume create \
+    --label "com.docker.compose.project=$PROJECT" \
+    --label "com.docker.compose.volume=uploads" \
+    "$UPLOADS_VOLUME" >/dev/null
+  docker run --rm \
+    -e FILE="${uploads_file##*/}" \
+    -v "$UPLOADS_VOLUME":/data \
+    -v "$(cd "$(dirname "$uploads_file")" && pwd)":/backup:ro \
+    alpine:3 sh -c 'find /data -mindepth 1 -delete && tar xzf "/backup/$FILE" -C /data' >&2
 fi
 
 log "Restore finished. Start the app with: ./scripts/deploy.sh <tag>"
