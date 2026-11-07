@@ -1,8 +1,11 @@
 FROM node:24.22.1-bookworm-slim AS builder
 
 RUN apt-get update \
+    && apt-get install -y --no-install-recommends --only-upgrade apt libapt-pkg6.0 \
     && apt-get install -y --no-install-recommends openssl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g npm@11.21.2 \
+    && npm cache clean --force
 
 WORKDIR /app
 
@@ -25,8 +28,11 @@ CMD ["npx", "prisma", "migrate", "deploy", "--config", "prisma7.config.ts"]
 FROM node:24.22.1-bookworm-slim AS runner
 
 RUN apt-get update \
+    && apt-get install -y --no-install-recommends --only-upgrade apt libapt-pkg6.0 \
     && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/* \
+    && npm install -g npm@11.21.2 \
+    && npm cache clean --force \
     && groupadd -r app \
     && useradd -r -g app -M -s /usr/sbin/nologin app
 
